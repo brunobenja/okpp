@@ -17,19 +17,14 @@ const JWT_SECRET = process.env.JWT_SECRET || "dev-secret-change-me";
 app.get("/seed", async (req, res) => {
   try {
     // DELETE old users and trainers first
-    await db.query("DELETE FROM treneri CASCADE");
-    await db.query("DELETE FROM korisnici CASCADE");
+    await db.query("DELETE FROM treneri");
+    await db.query("DELETE FROM korisnici");
 
     // Admin
     const adminEmail = "admin@mail.com";
-    const existingAdmin = await db.getUserByEmail(adminEmail);
-    if (!existingAdmin) {
-      const adminPassHash = await bcrypt.hash("admin", 10);
-      await db.createUser("Admin", "", adminEmail, adminPassHash, true);
-      console.log("Admin created");
-    } else {
-      console.log("Admin already exists");
-    }
+    const adminPassHash = await bcrypt.hash("admin", 10);
+    await db.createUser("Admin", "", "admin@mail.com", adminPassHash, true);
+    console.log("Admin created");
 
     // ---- REGULAR USERS ----
     const users = [
