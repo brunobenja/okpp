@@ -135,7 +135,7 @@ app.get("/seed", async (req, res) => {
         pic: "https://i.pravatar.cc/150?img=33",
       },
       {
-        name: "Maja",
+        name: "MMMM",
         surname: "Vuković",
         sex: "F",
         age: 28,
