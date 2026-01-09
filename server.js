@@ -16,7 +16,7 @@ app.get("/seed", async (req, res) => {
     const existingAdmin = await db.getUserByEmail(adminEmail);
     if (!existingAdmin) {
       const adminPassHash = await bcrypt.hash("admin", 10);
-      await db.createUser("Admin", "", adminEmail, adminPassHash, true);
+      await db.createUser("Admin", "", "admin@mail.com", adminPassHash, true);
       console.log("Admin created");
     } else {
       console.log("Admin already exists");

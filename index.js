@@ -114,9 +114,17 @@ async function createUser(name, surname, email, password, isAdmin = false) {
   return rows[0];
 }
 async function getUserByEmail(email) {
-  const { rows } = await query('SELECT * FROM korisnici WHERE email = $1', [email]);
-  return rows[0] || null;
+  const { rows } = await query("SELECT * FROM korisnici WHERE email = $1", [
+    email,
+  ]);
+  if (!rows.length) return null;
+  const user = rows[0];
+  return {
+    ...user,
+    is_admin: Boolean(user.is_admin), // <-- normalize
+  };
 }
+
 
 async function createTrainer(name, surname, sex, age, profilePic = null, yearsExperience = null, userId = null) {
   const { rows } = await query(
