@@ -212,9 +212,10 @@ app.get("/", (req, res) => {
   // Send the HTML file instead of text
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
-// Catch-all route to support client-side routing
-app.get("*", (req, res) => {
+// Catch-all route for client-side routing (must come after all other routes)
+app.use((req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
+
 // ---------------- START SERVER ----------------
 app.listen(PORT, () => console.log(`Server listening on port ${PORT}`));
