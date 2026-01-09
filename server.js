@@ -1,8 +1,16 @@
+require("dotenv").config();
+const express = require("express");
+const bcrypt = require("bcryptjs");
+const db = require("./index"); // your database module
+
+const app = express();
+app.use(express.json());
+
 // ---------------- TEMP DATABASE SEED ----------------
 // REMOVE THIS AFTER FIRST USE!
 app.get("/seed", async (req, res) => {
   try {
-    // ---- ADMIN ----
+    // Admin
     const adminEmail = "admin@mail.com";
     const existingAdmin = await db.getUserByEmail(adminEmail);
     if (!existingAdmin) {
@@ -150,9 +158,17 @@ app.get("/seed", async (req, res) => {
       }
     }
 
-    res.send("Database seeded successfully! Admin, users, and trainers added.");
+
+    res.send("Database seeded successfully!");
   } catch (err) {
     console.error(err);
     res.status(500).send("Error seeding database");
   }
 });
+
+// Start server
+const PORT = process.env.PORT || 3000;
+(async () => {
+  await db.init(); // make sure your DB is initialized
+  app.listen(PORT, () => console.log(`Server listening on port ${PORT}`));
+})();
