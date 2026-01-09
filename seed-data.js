@@ -20,6 +20,39 @@ const trainerData = [
   { name: 'Nikola', surname: 'Petrović', sex: 'M', age: 31, yearsExp: 8, pic: 'https://i.pravatar.cc/150?img=33' },
   { name: 'Maja', surname: 'Vuković', sex: 'F', age: 28, yearsExp: 5, pic: 'https://i.pravatar.cc/150?img=45' }
 ];
+async function getUserById(id) {
+  const { rows } = await query("SELECT * FROM korisnici WHERE id=$1", [id]);
+  return rows[0];
+}
+
+async function getTrainers() {
+  const { rows } = await query(
+    "SELECT id, name, surname, pic AS profile_pic FROM treneri"
+  );
+  return rows;
+}
+
+async function getAppointmentsForUser(userId) {
+  const { rows } = await query(
+    `SELECT a.id, a.scheduled_at, t.id AS trainer_id, t.name AS trainer_name, t.surname AS trainer_surname
+     FROM appointments a
+     JOIN treneri t ON a.trainer_id = t.id
+     WHERE a.user_id = $1`,
+    [userId]
+  );
+  return rows;
+}
+
+async function getAllAppointments() {
+  const { rows } = await query(
+    `SELECT a.id, a.scheduled_at, u.name AS user_name, u.surname AS user_surname, u.email AS user_email,
+            t.id AS trainer_id, t.name AS trainer_name, t.surname AS trainer_surname
+     FROM appointments a
+     JOIN korisnici u ON a.user_id = u.id
+     JOIN treneri t ON a.trainer_id = t.id`
+  );
+  return rows;
+}
 
 async function seedDatabase() {
   try {

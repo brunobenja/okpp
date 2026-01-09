@@ -1,69 +1,63 @@
 require("dotenv").config();
 const express = require("express");
-const path = require("path");
 const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken"); // ADD THIS
-const cookieParser = require("cookie-parser"); // ADD THIS
 const db = require("./index"); // your database module
 
 const app = express();
 app.use(express.json());
-app.use(cookieParser()); // ADD THIS
-app.use(express.static(path.join(__dirname, "public")));
 
-const JWT_SECRET = process.env.JWT_SECRET || "dev-secret-change-me";
 // ---------------- TEMP DATABASE SEED ----------------
-// REMOVE THIS AFTER FIRST USE!
+// REMOVE OR PROTECT THIS AFTER FIRST USE!
 app.get("/seed", async (req, res) => {
   try {
-    console.log("DATABASE_URL:", process.env.DATABASE_URL);
+    await db.init(); // make sure DB connection is ready
+    console.log("Database initialized");
 
-    // DELETE old users and trainers first
-    await db.query("DELETE FROM treneri");
-    await db.query("DELETE FROM korisnici");
-
-    // Admin
-    const adminEmail = "admin@mail.com";
-   const adminPassHash = await bcrypt.hash("admin", 10);
-   await db.createUser("Admin", "", "admin@mail.com", adminPassHash, true);
-   console.log("Admin created");
-
-
-    // ---- REGULAR USERS ----
-    const users = [
+    // ---------------- USERS ----------------
+    const userPasswords = [
       {
-        name: "Ivan",
-        surname: "Horvat",
         email: "ivan.horvat@mail.com",
         password: "lozinka123",
+        name: "Ivan",
+        surname: "Horvat",
       },
       {
-        name: "Ana",
-        surname: "Kovač",
         email: "ana.kovac@mail.com",
         password: "lozinka456",
+        name: "Ana",
+        surname: "Kovač",
       },
       {
-        name: "Marko",
-        surname: "Novak",
         email: "marko.novak@mail.com",
         password: "lozinka789",
+        name: "Marko",
+        surname: "Novak",
       },
     ];
 
-    for (const u of users) {
+    console.log("\nCreating users...");
+    const users = [];
+    for (const u of userPasswords) {
       const existing = await db.getUserByEmail(u.email);
       if (!existing) {
         const hash = await bcrypt.hash(u.password, 10);
-        await db.createUser(u.name, u.surname, u.email, hash, false);
-        console.log(`User created: ${u.email}`);
+        const created = await db.createUser(
+          u.name,
+          u.surname,
+          u.email,
+          hash,
+          false
+        );
+        users.push(created);
+        console.log(`User created: ${u.email} / ${u.password}`);
       } else {
+        users.push(existing);
         console.log(`User already exists: ${u.email}`);
       }
     }
 
-    // ---- TRAINERS ----
-    const trainers = [
+    // ---------------- TRAINERS ----------------
+    const trainerData = [
       {
         name: "Petar",
         surname: "Babić",
@@ -137,7 +131,7 @@ app.get("/seed", async (req, res) => {
         pic: "https://i.pravatar.cc/150?img=33",
       },
       {
-        name: "MMMM",
+        name: "Maja",
         surname: "Vuković",
         sex: "F",
         age: 28,
@@ -146,13 +140,14 @@ app.get("/seed", async (req, res) => {
       },
     ];
 
-    for (const t of trainers) {
-      // Check if trainer with same name & surname exists
+    console.log("\nCreating trainers...");
+    const trainers = [];
+    for (const t of trainerData) {
       const existing = (await db.getTrainers()).find(
         (tr) => tr.name === t.name && tr.surname === t.surname
       );
       if (!existing) {
-        await db.createTrainer(
+        const created = await db.createTrainer(
           t.name,
           t.surname,
           t.sex,
@@ -160,67 +155,57 @@ app.get("/seed", async (req, res) => {
           t.pic,
           t.yearsExp
         );
+        trainers.push(created);
         console.log(`Trainer created: ${t.name} ${t.surname}`);
       } else {
+        trainers.push(existing);
         console.log(`Trainer already exists: ${t.name} ${t.surname}`);
       }
     }
 
-    res.send("Database seeded successfully!");
+    // ---------------- APPOINTMENTS ----------------
+    console.log("\nCreating 100 appointments...");
+    const startDate = new Date();
+    startDate.setHours(8, 0, 0, 0);
+    let appointmentsCreated = 0;
+
+    for (let day = 0; day < 30 && appointmentsCreated < 100; day++) {
+      for (let hour = 8; hour <= 20 && appointmentsCreated < 100; hour++) {
+        const apptDate = new Date(startDate);
+        apptDate.setDate(apptDate.getDate() + day);
+        apptDate.setHours(hour, 0, 0, 0);
+
+        const randomUser = users[Math.floor(Math.random() * users.length)];
+        const randomTrainer =
+          trainers[Math.floor(Math.random() * trainers.length)];
+
+        try {
+          await db.bookAppointment(
+            randomUser.id,
+            randomTrainer.id,
+            apptDate.toISOString()
+          );
+          appointmentsCreated++;
+        } catch (e) {
+          // skip conflicts
+          continue;
+        }
+      }
+    }
+    console.log(`Created ${appointmentsCreated} appointments`);
+
+    res.send(
+      `Seeding complete! Created ${users.length} users, ${trainers.length} trainers, ${appointmentsCreated} appointments.`
+    );
   } catch (err) {
-    console.error(err);
+    console.error("Seeding error:", err);
     res.status(500).send("Error seeding database");
   }
 });
-app.post("/api/login", async (req, res) => {
-  try {
-    const { email, password } = req.body || {};
-    if (!email || !password)
-      return res.status(400).json({ error: "Nedostaju polja" });
 
-    const user = await db.getUserByEmail(email);
-    if (!user)
-      return res.status(401).json({ error: "Neispravni podaci za prijavu" });
+// ---------------- ROOT ROUTE ----------------
+app.get("/", (req, res) => res.send("Server is running"));
 
-    const ok = await bcrypt.compare(password, user.password);
-    if (!ok)
-      return res.status(401).json({ error: "Neispravni podaci za prijavu" });
-
-    const token = jwt.sign(
-      { id: String(user.id), email: user.email, is_admin: user.is_admin },
-      JWT_SECRET,
-      { expiresIn: "7d" }
-    );
-
-    const isProd = process.env.NODE_ENV === "production";
-    res.cookie("auth", token, {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: isProd,
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
-
-    res.json({
-      id: user.id,
-      name: user.name,
-      surname: user.surname,
-      email: user.email,
-      is_admin: user.is_admin,
-    });
-  } catch (err) {
-    console.error("Login error:", err);
-    res.status(500).json({ error: "Pogreška poslužitelja" });
-  }
-});
-
-// ROOT ROUTE
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
-});
-
-// Start server
+// ---------------- START SERVER ----------------
 const PORT = process.env.PORT || 3000;
-(async () => {
-  await db.init(); // make sure your DB is initialized
-  app.listen(PORT, () => console.log(`Server listening on port ${PORT}`));
-})();
+app.listen(PORT, () => console.log(`Server listening on port ${PORT}`));
