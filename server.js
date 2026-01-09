@@ -16,6 +16,8 @@ const JWT_SECRET = process.env.JWT_SECRET || "dev-secret-change-me";
 // REMOVE THIS AFTER FIRST USE!
 app.get("/seed", async (req, res) => {
   try {
+    console.log("DATABASE_URL:", process.env.DATABASE_URL);
+
     // DELETE old users and trainers first
     await db.query("DELETE FROM treneri");
     await db.query("DELETE FROM korisnici");
