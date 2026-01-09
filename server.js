@@ -108,9 +108,9 @@ app.get("/api/trainers", async (req, res) => {
 // ---------------- SEED (DEV ONLY) ----------------
 app.get("/seed", async (req, res) => {
   try {
-    await db.clearAll?.();
+    console.log("Seeding started...");
 
-    const adminPass = await bcrypt.hash("admin", 10);
+    // ---------- ADMIN ----------
     const adminEmail = "admin@mail.com";
     const existingAdmin = await db.getUserByEmail(adminEmail);
 
@@ -122,6 +122,7 @@ app.get("/seed", async (req, res) => {
       console.log("Admin already exists");
     }
 
+    // ---------- USERS ----------
     const users = [
       ["Ivan", "Horvat", "ivan.horvat@mail.com", "lozinka123"],
       ["Ana", "Kovač", "ana.kovac@mail.com", "lozinka456"],
@@ -129,9 +130,17 @@ app.get("/seed", async (req, res) => {
     ];
 
     for (const [n, s, e, p] of users) {
+      const existing = await db.getUserByEmail(e);
+      if (existing) {
+        console.log(`User already exists: ${e}`);
+        continue;
+      }
+
       await db.createUser(n, s, e, await bcrypt.hash(p, 10), false);
+      console.log(`User created: ${e}`);
     }
 
+    // ---------- TRAINERS ----------
     const trainers = [
       ["Petar", "Babić", "M", 28, 5],
       ["Marija", "Jurić", "F", 32, 8],
@@ -145,16 +154,23 @@ app.get("/seed", async (req, res) => {
       ["Maja", "Vuković", "F", 28, 5],
     ];
 
-    for (const t of trainers) {
-      await db.createTrainer(...t, "https://i.pravatar.cc/150");
+    const existingTrainers = await db.getTrainers();
+    if (existingTrainers.length === 0) {
+      for (const t of trainers) {
+        await db.createTrainer(...t, "https://i.pravatar.cc/150");
+      }
+      console.log("Trainers created");
+    } else {
+      console.log("Trainers already exist");
     }
 
-    res.send("Seeding complete");
+    res.send("Seeding complete!");
   } catch (err) {
-    console.error(err);
+    console.error("Seed failed:", err);
     res.status(500).send("Seed failed");
   }
 });
+
 
 // ---------------- FRONTEND FALLBACK ----------------
 app.use((req, res) => {
