@@ -111,7 +111,16 @@ app.get("/seed", async (req, res) => {
     await db.clearAll?.();
 
     const adminPass = await bcrypt.hash("admin", 10);
-    await db.createUser("Admin", "", "admin@mail.com", adminPass, true);
+    const adminEmail = "admin@mail.com";
+    const existingAdmin = await db.getUserByEmail(adminEmail);
+
+    if (!existingAdmin) {
+      const adminPassHash = await bcrypt.hash("admin", 10);
+      await db.createUser("Admin", "", adminEmail, adminPassHash, true);
+      console.log("Admin created");
+    } else {
+      console.log("Admin already exists");
+    }
 
     const users = [
       ["Ivan", "Horvat", "ivan.horvat@mail.com", "lozinka123"],
