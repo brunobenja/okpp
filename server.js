@@ -1,11 +1,17 @@
 require("dotenv").config();
 const express = require("express");
 const bcrypt = require("bcryptjs");
-const db = require("./index"); // your database module
+const cookieParser = require("cookie-parser");
+const path = require("path");
+const db = require("./index");
 
 const app = express();
-app.use(express.json());
+const PORT = process.env.PORT || 3000;
 
+app.use(express.json());
+app.use(cookieParser());
+// Serve static files from public folder
+app.use(express.static(path.join(__dirname, "public")));
 // ---------------- TEMP DATABASE SEED ----------------
 // REMOVE OR PROTECT THIS AFTER FIRST USE!
 app.get("/seed", async (req, res) => {
@@ -194,9 +200,7 @@ app.get("/seed", async (req, res) => {
     }
     console.log(`Created ${appointmentsCreated} appointments`);
 
-    res.send(
-      `Seeding complete! Created ${users.length} users, ${trainers.length} trainers, ${appointmentsCreated} appointments.`
-    );
+    res.send("Seeding complete! Check server logs for details.");
   } catch (err) {
     console.error("Seeding error:", err);
     res.status(500).send("Error seeding database");
@@ -204,8 +208,13 @@ app.get("/seed", async (req, res) => {
 });
 
 // ---------------- ROOT ROUTE ----------------
-app.get("/", (req, res) => res.send("Server is running"));
-
+app.get("/", (req, res) => {
+  // Send the HTML file instead of text
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+// Catch-all route to support client-side routing
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
 // ---------------- START SERVER ----------------
-const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server listening on port ${PORT}`));
