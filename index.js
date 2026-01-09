@@ -136,8 +136,10 @@ async function createTrainer(name, surname, sex, age, profilePic = null, yearsEx
   return rows[0];
 }
 async function getTrainers() {
-  const { rows } = await query('SELECT * FROM treneri ORDER BY surname, name', []);
-  return rows;
+  const { rows } = await query(
+    "SELECT id, name, surname, sex, age, yearsExp, pic AS profile_pic FROM treneri"
+  );
+  return rows; // must return array
 }
 
 async function bookAppointment(userId, trainerId, scheduledAt) {
