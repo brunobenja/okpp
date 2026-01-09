@@ -1,0 +1,1207 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>GymTime - Rezervacija termina</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      
+      body { 
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #1a4d2e 0%, #2d5f3f 100%);
+        min-height: 100vh;
+        padding: 20px;
+      }
+      
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+      
+      .main-content {
+        display: grid;
+        grid-template-columns: 450px 1fr;
+        gap: 20px;
+        align-items: start;
+      }
+      
+      @media (max-width: 1024px) {
+        .main-content {
+          grid-template-columns: 1fr;
+        }
+      }
+      
+      .header {
+        background: rgba(255, 255, 255, 0.98);
+        border-radius: 16px;
+        padding: 24px 32px;
+        margin-bottom: 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+      }
+      
+      .logo-section {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      
+      .logo-section h1 {
+        font-size: 32px;
+        font-weight: 800;
+        color: #1a4d2e;
+        margin: 0;
+      }
+      
+      #logoutBtn {
+        background: linear-gradient(135deg, #2d5f3f 0%, #1a4d2e 100%);
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 8px rgba(45, 95, 63, 0.3);
+      }
+      
+      #logoutBtn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(45, 95, 63, 0.4);
+      }
+      
+      .card { 
+        background: rgba(255, 255, 255, 0.98);
+        border: none;
+        border-radius: 16px;
+        padding: 24px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+      }
+      
+      .card h3 {
+        color: #1a4d2e;
+        font-size: 22px;
+        font-weight: 700;
+        margin-bottom: 16px;
+      }
+      
+      label { 
+        display: block;
+        margin-top: 12px;
+        font-weight: 600;
+        font-size: 14px;
+        color: #2d5f3f;
+        margin-bottom: 6px;
+      }
+      
+      select, input { 
+        width: 100%;
+        padding: 10px 14px;
+        margin-top: 4px;
+        box-sizing: border-box;
+        border: 2px solid #d0e3d9;
+        border-radius: 8px;
+        font-size: 14px;
+        background: #f9fcfb;
+        transition: all 0.3s ease;
+      }
+      
+      select:focus, input:focus {
+        outline: none;
+        border-color: #2d5f3f;
+        background: white;
+        box-shadow: 0 0 0 3px rgba(45, 95, 63, 0.1);
+      }
+      
+      button { 
+        margin-top: 12px;
+        padding: 10px 16px;
+        background: linear-gradient(135deg, #2d5f3f 0%, #1a4d2e 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 8px rgba(45, 95, 63, 0.3);
+      }
+      
+      button:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(45, 95, 63, 0.4);
+      }
+      
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+      }
+      
+      .row { display: flex; gap: 12px; }
+      .row > div { flex: 1; }
+      
+      .error { 
+        color: #c62828;
+        margin-top: 12px;
+        background: #ffebee;
+        padding: 12px;
+        border-radius: 8px;
+        font-size: 14px;
+        border-left: 4px solid #c62828;
+        display: none;
+      }
+      
+      .error:not(:empty) {
+        display: block;
+      }
+      
+      .success { 
+        color: #1b5e20;
+        margin-top: 12px;
+        background: #e8f5e9;
+        padding: 12px;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 14px;
+        border-left: 4px solid #2e7d32;
+        display: none;
+      }
+      
+      .success:not(:empty) {
+        display: block;
+      }
+      table { 
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 12px;
+        background: white;
+        border-radius: 8px;
+        overflow: hidden;
+      }
+      
+      th {
+        background: linear-gradient(135deg, #2d5f3f 0%, #1a4d2e 100%);
+        color: white;
+        padding: 12px;
+        text-align: left;
+        font-weight: 700;
+        font-size: 14px;
+      }
+      
+      td { 
+        border-bottom: 1px solid #e0e0e0;
+        padding: 12px;
+        text-align: left;
+      }
+      
+      td:last-child {
+        text-align: center;
+      }
+      
+      tr:last-child td {
+        border-bottom: none;
+      }
+      
+      tr:hover {
+        background: #f5f5f5;
+      }
+      
+      .del-btn { 
+        background: #d32f2f;
+        color: #fff;
+        border: none;
+        padding: 6px 12px;
+        cursor: pointer;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+      }
+      
+      .del-btn:hover {
+        background: #b71c1c;
+        transform: scale(1.05);
+      }
+      
+      .confirm-btn { 
+        background: #2d5f3f;
+        color: #fff;
+        border: none;
+        padding: 6px 12px;
+        cursor: pointer;
+        border-radius: 6px;
+        font-size: 12px;
+        margin-right: 4px;
+        font-weight: 600;
+      }
+      
+      .cancel-btn { 
+        background: #999;
+        color: #fff;
+        border: none;
+        padding: 6px 12px;
+        cursor: pointer;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 600;
+      }
+      
+      .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+      }
+      
+      .modal {
+        background: white;
+        border-radius: 8px;
+        padding: 24px;
+        max-width: 400px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        text-align: center;
+      }
+      
+      .modal.success-modal {
+        border-top: 4px solid #2d5f3f;
+      }
+      
+      .modal.error-modal {
+        border-top: 4px solid #d32f2f;
+      }
+      
+      .modal h3 {
+        margin: 0 0 8px 0;
+      }
+      
+      .modal p {
+        margin: 0 0 16px 0;
+        color: #666;
+      }
+      
+      .modal-buttons {
+        display: flex;
+        gap: 8px;
+        justify-content: center;
+      }
+      
+      .modal-btn {
+        padding: 8px 16px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+      }
+      
+      .modal-btn.confirm {
+        background: #2d5f3f;
+        color: white;
+      }
+      
+      .modal-btn.cancel {
+        background: #d32f2f;
+        color: white;
+      }
+      
+      .modal-btn.close {
+        background: #2d5f3f;
+        color: white;
+      }
+      
+      .modal-btn:hover {
+        opacity: 0.9;
+      }
+      
+      .calendar-container { margin-top: 16px; }
+      .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; margin-top: 8px; }
+      .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+      .calendar-header button { padding: 4px 10px; margin: 0; font-size: 13px; }
+      .calendar-header span { font-size: 14px; font-weight: 500; }
+      .calendar-day { 
+        aspect-ratio: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid #d0e3d9;
+        border-radius: 4px;
+        cursor: pointer;
+        background: white;
+        transition: all 0.2s;
+        font-size: 12px;
+        min-height: 32px;
+        font-weight: 500;
+      }
+      .calendar-day:hover:not(.disabled):not(.day-label) { 
+        background: #e8f5e9;
+        border-color: #2d5f3f;
+      }
+      .calendar-day.selected { 
+        background: linear-gradient(135deg, #2d5f3f 0%, #1a4d2e 100%);
+        color: white;
+        font-weight: bold;
+        border-color: #1a4d2e;
+      }
+      .calendar-day.disabled { color: #ccc; cursor: not-allowed; background: #fafafa; }
+      .calendar-day.day-label { font-weight: 700; cursor: default; background: #e8f5e9; color: #1a4d2e; font-size: 11px; }
+      .calendar-day.today { border: 2px solid #2d5f3f; font-weight: 700; }
+      
+      .time-slots { margin-top: 16px; }
+      .time-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(65px, 1fr)); gap: 5px; margin-top: 8px; }
+      .time-btn {
+        padding: 8px;
+        border: 2px solid #d0e3d9;
+        border-radius: 6px;
+        background: white;
+        cursor: pointer;
+        transition: all 0.2s;
+        text-align: center;
+        font-size: 12px;
+        font-weight: 700;
+        color: #1a4d2e;
+      }
+      .time-btn:hover:not(:disabled) { 
+        background: #e8f5e9;
+        border-color: #2d5f3f;
+        transform: translateY(-2px);
+        color: #1a4d2e;
+      }
+      .time-btn.selected { 
+        background: linear-gradient(135deg, #2d5f3f 0%, #1a4d2e 100%);
+        color: white;
+        border-color: #1a4d2e;
+        font-weight: bold;
+      }
+      .time-btn:disabled { background: #f5f5f5; color: #999; cursor: not-allowed; border-color: #e0e0e0; }
+      
+      .book-final { margin-top: 16px; }
+      .book-final button { 
+        width: 100%; 
+        padding: 14px; 
+        background: linear-gradient(135deg, #2d5f3f 0%, #1a4d2e 100%);
+        color: white; 
+        border: none; 
+        border-radius: 8px; 
+        font-size: 16px;
+        cursor: pointer;
+        font-weight: 700;
+        box-shadow: 0 4px 12px rgba(45, 95, 63, 0.3);
+      }
+      .book-final button:disabled { 
+        background: #ccc;
+        cursor: not-allowed;
+        box-shadow: none;
+      }
+      .book-final button:hover:not(:disabled) { 
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(45, 95, 63, 0.4);
+      }
+      
+      .action-cell { display: flex; gap: 4px; align-items: center; }
+      
+      .trainer-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 12px;
+        margin-top: 12px;
+      }
+      
+      .trainer-card {
+        border: 3px solid #d0e3d9;
+        border-radius: 12px;
+        padding: 12px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        background: white;
+      }
+      
+      .trainer-card:hover {
+        border-color: #2d5f3f;
+        background: #e8f5e9;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(45, 95, 63, 0.2);
+      }
+      
+      .trainer-card.selected {
+        border-color: #1a4d2e;
+        background: linear-gradient(135deg, #2d5f3f 0%, #1a4d2e 100%);
+        color: white;
+        transform: scale(1.02);
+      }
+      
+      .trainer-avatar {
+        width: 70px;
+        height: 70px;
+        border-radius: 50%;
+        margin: 0 auto 8px;
+        object-fit: cover;
+        border: 3px solid #d0e3d9;
+        background: #f0f0f0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 32px;
+      }
+      
+      .trainer-card.selected .trainer-avatar {
+        border-color: white;
+      }
+      
+      .trainer-name {
+        font-weight: 700;
+        font-size: 13px;
+        color: #1a4d2e;
+        margin: 0;
+      }
+      
+      .trainer-card.selected .trainer-name {
+        color: white;
+      }
+      
+      #trainerSelect {
+        display: none;
+      }
+      
+      .admin-filters {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 16px;
+        flex-wrap: wrap;
+      }
+      
+      .filter-group {
+        flex: 1;
+        min-width: 200px;
+      }
+      
+      .filter-group label {
+        display: block;
+        margin-bottom: 6px;
+        font-size: 13px;
+      }
+      
+      .filter-group select,
+      .filter-group input {
+        width: 100%;
+        padding: 8px 12px;
+        margin: 0;
+      }
+      
+      .clear-filters-btn {
+        padding: 10px 16px;
+        background: linear-gradient(135deg, #2d5f3f 0%, #1a4d2e 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 8px rgba(45, 95, 63, 0.3);
+        width: 100%;
+        margin-top: 0;
+      }
+      
+      .clear-filters-btn:hover {
+        background: linear-gradient(135deg, #234a2a 0%, #153d24 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(45, 95, 63, 0.4);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <div class="logo-section">
+          <h1>GymTime</h1>
+          <div>
+            <div id="pageTitle" style="font-size: 18px; font-weight: 700; color: #1a4d2e;">Rezervirajte termin</div>
+          </div>
+        </div>
+        <button id="logoutBtn">Odjava</button>
+      </div>
+
+    <div class="main-content">
+      <div class="card" id="bookingPanel">
+      <h3>Novi termin</h3>
+      <label>Odaberite trenera</label>
+      <div class="trainer-grid" id="trainerGrid"></div>
+      <select id="trainerSelect" style="display: none;">
+        <option value="">-- Odaberite trenera --</option>
+      </select>
+      
+      <div class="calendar-container" id="calendarContainer" style="display:none;">
+        <label>Odaberite datum</label>
+        <div class="calendar-header">
+          <button id="prevMonth">&lt; Prethodni</button>
+          <span id="monthYear"></span>
+          <button id="nextMonth">Sljedeći &gt;</button>
+        </div>
+        <div class="calendar-grid" id="calendarGrid"></div>
+      </div>
+      
+      <div class="time-slots" id="timeSlots" style="display:none;">
+        <label>Odaberite vrijeme (termini od 1 sata)</label>
+        <div class="time-grid" id="timeGrid"></div>
+      </div>
+      
+      <div class="book-final" id="bookFinal" style="display:none;">
+        <button id="bookBtn" disabled>Rezerviraj termin</button>
+        <div class="error" id="bookErr"></div>
+        <div class="success" id="bookSuccess"></div>
+      </div>
+      </div>
+
+      <div class="card" id="userApptPanel">
+      <h3>Vaši termini</h3>
+      <div class="admin-filters">
+        <div class="filter-group">
+          <label>Filtriraj po datumu</label>
+          <input type="date" id="userDateFilter" />
+        </div>
+        <div class="filter-group">
+          <label>&nbsp;</label>
+          <button class="clear-filters-btn" id="clearUserFiltersBtn">Očisti filtre</button>
+        </div>
+      </div>
+      <div id="apptList">Učitavanje…</div>
+      </div>
+    </div>
+
+    <div class="card" id="adminPanel" hidden>
+      <h3>Admin: Svi termini</h3>
+      <div class="admin-filters">
+        <div class="filter-group">
+          <label>Filtriraj po treneru</label>
+          <select id="adminTrainerFilter">
+            <option value="">Svi treneri</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Filtriraj po datumu</label>
+          <input type="date" id="adminDateFilter" />
+        </div>
+        <div class="filter-group">
+          <label>&nbsp;</label>
+          <button class="clear-filters-btn" id="clearFiltersBtn">Očisti filtre</button>
+        </div>
+      </div>
+      <div id="adminApptList">Učitavanje…</div>
+    </div>
+
+    <script>
+      let isAdmin = false;
+      let allAppointments = [];
+      let allUserAppointments = [];
+      let allAdminAppointments = [];
+      let selectedTrainer = null;
+      let selectedDate = null;
+      let selectedTime = null;
+      let currentMonth = new Date();
+      let pendingDeleteId = null;
+      let pendingDeleteType = null;
+      let adminFilterTrainer = '';
+      let adminFilterDate = '';
+      let userFilterDate = '';
+      
+      const allTimeSlots = [
+        '08:00', '09:00', '10:00', '11:00', '12:00', '13:00',
+        '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'
+      ];
+      const dayLabels = ['Ned', 'Pon', 'Uto', 'Sri', 'Čet', 'Pet', 'Sub'];
+
+      async function get(path) {
+        const res = await fetch(path);
+        if (res.status === 401) { location.href = '/'; return; }
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'Request failed');
+        return data;
+      }
+      async function post(path, body) {
+        const res = await fetch(path, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        if (res.status === 401) { location.href = '/'; return; }
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'Request failed');
+        return data;
+      }
+      async function del(path) {
+        const res = await fetch(path, { method: 'DELETE' });
+        if (res.status === 401) { location.href = '/'; return; }
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'Request failed');
+        return data;
+      }
+
+      function showModal(title, message, type, onConfirm = null, showCancel = false) {
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+        
+        const modal = document.createElement('div');
+        modal.className = `modal ${type}-modal`;
+        
+        modal.innerHTML = `
+          <h3>${title}</h3>
+          <p>${message}</p>
+          <div class="modal-buttons">
+            ${showCancel ? `<button class="modal-btn confirm" onclick="confirmDeleteFromModal()">Da</button>` : ''}
+            <button class="modal-btn ${showCancel ? 'cancel' : 'close'}" onclick="closeModal()">
+              ${showCancel ? 'Ne' : 'U redu'}
+            </button>
+          </div>
+        `;
+        
+        overlay.appendChild(modal);
+        document.body.appendChild(overlay);
+      }
+
+      function closeModal() {
+        const overlay = document.querySelector('.modal-overlay');
+        overlay?.remove();
+        pendingDeleteId = null;
+        pendingDeleteType = null;
+      }
+
+      async function confirmDeleteFromModal() {
+        // Save the values BEFORE closing modal
+        const deleteId = pendingDeleteId;
+        const deleteType = pendingDeleteType;
+        
+        console.log('confirmDeleteFromModal - ID:', deleteId, 'Type:', deleteType);
+        closeModal();
+        
+        try {
+          if (deleteType === 'user') {
+            console.log('Deleting user appointment:', deleteId);
+            await del(`/api/appointments/${deleteId}`);
+            await loadAllAppointmentsForFiltering();
+            await loadAppointments();
+            updateTimeSlots();
+          } else {
+            console.log('Deleting admin appointment:', deleteId);
+            await del(`/api/admin/appointments/${deleteId}`);
+            await loadAdminAppointments();
+          }
+          
+            showModal('Uspjeh', 'Termin je uspješno obrisan!', 'success-modal');
+          setTimeout(() => closeModal(), 2000);
+        } catch (e) {
+            showModal('Pogreška', e.message, 'error-modal');
+        }
+      }
+
+      async function loadAllAppointmentsForFiltering() {
+        allAppointments = await get('/api/appointments/all');
+      }
+
+      async function loadTrainers() {
+        const trainers = await get('/api/trainers');
+        const grid = document.getElementById('trainerGrid');
+        grid.innerHTML = '';
+        
+        trainers.forEach(t => {
+          const card = document.createElement('div');
+          card.className = 'trainer-card';
+          card.onclick = () => selectTrainer(t.id);
+          
+          const avatar = document.createElement('div');
+          avatar.className = 'trainer-avatar';
+          
+          if (t.profile_pic) {
+            const img = document.createElement('img');
+            img.src = t.profile_pic;
+            img.alt = `${t.name} ${t.surname}`;
+            img.style.width = '100%';
+            img.style.height = '100%';
+            img.style.borderRadius = '50%';
+            img.style.objectFit = 'cover';
+            avatar.appendChild(img);
+          } else {
+            const initials = `${(t.name || '').charAt(0)}${(t.surname || '').charAt(0)}`.toUpperCase();
+            avatar.textContent = initials || 'TR';
+          }
+          
+          const name = document.createElement('div');
+          name.className = 'trainer-name';
+          name.textContent = `${t.name} ${t.surname}`;
+          
+          card.appendChild(avatar);
+          card.appendChild(name);
+          grid.appendChild(card);
+        });
+      }
+      
+      function selectTrainer(trainerId) {
+        selectedTrainer = trainerId;
+        selectedDate = null;
+        selectedTime = null;
+        
+        // Update UI
+        document.querySelectorAll('.trainer-card').forEach(card => {
+          card.classList.remove('selected');
+        });
+        event.currentTarget.classList.add('selected');
+        
+        const calendarContainer = document.getElementById('calendarContainer');
+        calendarContainer.style.display = 'block';
+        currentMonth = new Date();
+        renderCalendar();
+        
+        document.getElementById('timeSlots').style.display = 'none';
+        document.getElementById('bookFinal').style.display = 'none';
+      }
+
+      function renderCalendar() {
+        const grid = document.getElementById('calendarGrid');
+        const monthYear = document.getElementById('monthYear');
+        
+        const year = currentMonth.getFullYear();
+        const month = currentMonth.getMonth();
+        
+        monthYear.textContent = new Date(year, month).toLocaleDateString('hr-HR', { month: 'long', year: 'numeric' });
+        
+        grid.innerHTML = '';
+        
+        // Day labels
+        dayLabels.forEach(label => {
+          const div = document.createElement('div');
+          div.className = 'calendar-day day-label';
+          div.textContent = label;
+          grid.appendChild(div);
+        });
+        
+        const firstDay = new Date(year, month, 1).getDay();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        // Empty cells before month starts
+        for (let i = 0; i < firstDay; i++) {
+          const div = document.createElement('div');
+          div.className = 'calendar-day disabled';
+          grid.appendChild(div);
+        }
+        
+        // Days of month
+        for (let day = 1; day <= daysInMonth; day++) {
+          const date = new Date(year, month, day);
+          date.setHours(0, 0, 0, 0);
+          
+          const dateYear = date.getFullYear();
+          const dateMonth = String(date.getMonth() + 1).padStart(2, '0');
+          const dateDay = String(date.getDate()).padStart(2, '0');
+          const dateStr = `${dateYear}-${dateMonth}-${dateDay}`;
+          
+          const isPast = date < today;
+          
+          const div = document.createElement('div');
+          div.className = 'calendar-day';
+          div.textContent = day;
+          
+          if (isPast) {
+            div.classList.add('disabled');
+          } else {
+            if (date.getTime() === today.getTime()) {
+              div.classList.add('today');
+            }
+            if (selectedDate === dateStr) {
+              div.classList.add('selected');
+            }
+            div.onclick = () => selectDate(dateStr);
+          }
+          
+          grid.appendChild(div);
+        }
+      }
+
+      function selectDate(dateStr) {
+        selectedDate = dateStr;
+        selectedTime = null;
+        renderCalendar();
+        updateTimeSlots();
+        updateBookButton();
+      }
+
+      function updateTimeSlots() {
+        const container = document.getElementById('timeSlots');
+        const grid = document.getElementById('timeGrid');
+        
+        if (!selectedTrainer || !selectedDate) {
+          container.style.display = 'none';
+          return;
+        }
+        
+        container.style.display = 'block';
+        grid.innerHTML = '';
+        
+        const bookedTimes = new Set();
+        allAppointments.forEach(a => {
+          if (a.trainer_id == selectedTrainer) {
+            const apptDate = new Date(a.scheduled_at);
+            const year = apptDate.getFullYear();
+            const month = String(apptDate.getMonth() + 1).padStart(2, '0');
+            const day = String(apptDate.getDate()).padStart(2, '0');
+            const apptDateStr = `${year}-${month}-${day}`;
+            if (apptDateStr === selectedDate) {
+              const hours = apptDate.getHours().toString().padStart(2, '0');
+              const mins = apptDate.getMinutes().toString().padStart(2, '0');
+              bookedTimes.add(`${hours}:${mins}`);
+            }
+          }
+        });
+
+        const userBookedTimes = new Set();
+        allUserAppointments.forEach(a => {
+          const apptDate = new Date(a.scheduled_at);
+          const year = apptDate.getFullYear();
+          const month = String(apptDate.getMonth() + 1).padStart(2, '0');
+          const day = String(apptDate.getDate()).padStart(2, '0');
+          const apptDateStr = `${year}-${month}-${day}`;
+          if (apptDateStr === selectedDate) {
+            const hours = apptDate.getHours().toString().padStart(2, '0');
+            const mins = apptDate.getMinutes().toString().padStart(2, '0');
+            userBookedTimes.add(`${hours}:${mins}`);
+          }
+        });
+        
+        allTimeSlots.forEach(time => {
+          const btn = document.createElement('button');
+          btn.className = 'time-btn';
+          btn.textContent = time;
+
+          const isTrainerBlocked = bookedTimes.has(time);
+          const isUserBlocked = userBookedTimes.has(time);
+          btn.disabled = isTrainerBlocked || isUserBlocked;
+          if (isUserBlocked) {
+            btn.title = 'Već imate termin u ovom vremenu';
+          } else if (isTrainerBlocked) {
+            btn.title = 'Trener je zauzet u ovom terminu';
+          } else {
+            btn.title = '';
+          }
+          
+          if (selectedTime === time) {
+            btn.classList.add('selected');
+          }
+          
+          if (!btn.disabled) {
+            btn.onclick = () => selectTime(time);
+          }
+          
+          grid.appendChild(btn);
+        });
+      }
+
+      function selectTime(time) {
+        selectedTime = time;
+        updateTimeSlots();
+        updateBookButton();
+      }
+
+      function updateBookButton() {
+        const btn = document.getElementById('bookBtn');
+        const container = document.getElementById('bookFinal');
+        
+        if (selectedTrainer && selectedDate && selectedTime) {
+          container.style.display = 'block';
+          
+          // Check if user already has an appointment at this date and time
+          const hasConflict = allUserAppointments.some(a => {
+            const apptDate = new Date(a.scheduled_at);
+            const year = apptDate.getFullYear();
+            const month = String(apptDate.getMonth() + 1).padStart(2, '0');
+            const day = String(apptDate.getDate()).padStart(2, '0');
+            const apptDateStr = `${year}-${month}-${day}`;
+            const hours = apptDate.getHours().toString().padStart(2, '0');
+            const mins = apptDate.getMinutes().toString().padStart(2, '0');
+            const apptTime = `${hours}:${mins}`;
+            return apptDateStr === selectedDate && apptTime === selectedTime;
+          });
+          
+          if (hasConflict) {
+            btn.disabled = true;
+            btn.title = 'Već imate termin u ovom vremenu';
+            btn.style.opacity = '0.5';
+            btn.style.cursor = 'not-allowed';
+          } else {
+            btn.disabled = false;
+            btn.title = '';
+            btn.style.opacity = '1';
+            btn.style.cursor = 'pointer';
+          }
+        } else {
+          if (selectedTrainer && selectedDate) {
+            container.style.display = 'block';
+          } else {
+            container.style.display = 'none';
+          }
+          btn.disabled = true;
+          btn.title = '';
+          btn.style.opacity = '1';
+          btn.style.cursor = 'pointer';
+        }
+      }
+
+      function fmt(dt) {
+        const d = new Date(dt);
+        return d.toLocaleString('hr-HR');
+      }
+
+      async function loadAppointments() {
+        try {
+          console.log('Fetching appointments...');
+          allUserAppointments = await get('/api/appointments');
+          console.log('Fetched appointments:', allUserAppointments);
+          renderFilteredUserAppointments();
+        } catch (e) {
+          console.error('Error loading appointments:', e);
+        }
+      }
+
+      function renderFilteredUserAppointments() {
+        const wrap = document.getElementById('apptList');
+        let list = [...allUserAppointments];
+        
+        console.log('Rendering with list:', list);
+        
+        // Apply date filter
+        if (userFilterDate) {
+          list = list.filter(a => {
+            const apptDate = new Date(a.scheduled_at);
+            const filterDate = new Date(userFilterDate);
+            return apptDate.toDateString() === filterDate.toDateString();
+          });
+        }
+        
+        // Sort by time
+        list.sort((a, b) => {
+          const timeA = new Date(a.scheduled_at).getTime();
+          const timeB = new Date(b.scheduled_at).getTime();
+          return timeA - timeB;
+        });
+        
+        if (!list || list.length === 0) { 
+          wrap.textContent = 'Još nema termina.'; 
+          return; 
+        }
+        const rows = list.map(a => `
+          <tr>
+            <td>${fmt(a.scheduled_at)}</td>
+            <td>${a.trainer_name} ${a.trainer_surname}</td>
+            <td><button class="del-btn" onclick="showDeleteConfirm(${a.id}, 'user')">Obriši</button></td>
+          </tr>
+        `).join('');
+        wrap.innerHTML = `<table><thead><tr><th>Vrijeme</th><th>Trener</th><th>Radnja</th></tr></thead><tbody>${rows}</tbody></table>`;
+      }
+
+      async function loadAdminAppointments() {
+        if (!isAdmin) return;
+        allAdminAppointments = await get('/api/admin/appointments');
+        renderFilteredAdminAppointments();
+      }
+      
+      function renderFilteredAdminAppointments() {
+        const wrap = document.getElementById('adminApptList');
+        let list = [...allAdminAppointments];
+        
+        // Apply trainer filter
+        if (adminFilterTrainer) {
+          list = list.filter(a => a.trainer_id == adminFilterTrainer);
+        }
+        
+        // Apply date filter
+        if (adminFilterDate) {
+          list = list.filter(a => {
+            const apptDate = new Date(a.scheduled_at);
+            const filterDate = new Date(adminFilterDate);
+            return apptDate.toDateString() === filterDate.toDateString();
+          });
+        }
+        
+        if (!list || list.length === 0) { 
+          wrap.textContent = 'Nema termina koji odgovaraju filtrima.'; 
+          return; 
+        }
+        
+        const rows = list.map(a => {
+          return `<tr>
+            <td>${fmt(a.scheduled_at)}</td>
+            <td>${a.user_name} ${a.user_surname} (${a.user_email})</td>
+            <td>${a.trainer_name} ${a.trainer_surname}</td>
+            <td><button class="del-btn" onclick="showDeleteConfirm(${a.id}, 'admin')">Obriši</button></td>
+          </tr>`;
+        }).join('');
+        wrap.innerHTML = `<table><thead><tr><th>Vrijeme</th><th>Korisnik</th><th>Trener</th><th>Radnja</th></tr></thead><tbody>${rows}</tbody></table>`;
+      }
+      
+      async function populateAdminTrainerFilter() {
+        const trainers = await get('/api/trainers');
+        const select = document.getElementById('adminTrainerFilter');
+        trainers.forEach(t => {
+          const opt = document.createElement('option');
+          opt.value = t.id;
+          opt.textContent = `${t.name} ${t.surname}`;
+          select.appendChild(opt);
+        });
+      }
+
+      function showDeleteConfirm(id, type) {
+        console.log('showDeleteConfirm called with ID:', id, 'Type:', type);
+        pendingDeleteId = id;
+        pendingDeleteType = type;
+        showModal('Brisanje termina', 'Jeste li sigurni da želite obrisati ovaj termin?', 'error-modal', true, true);
+      }
+
+      // Trainer selection is now handled by trainer cards
+
+      document.getElementById('prevMonth').addEventListener('click', () => {
+        currentMonth.setMonth(currentMonth.getMonth() - 1);
+        renderCalendar();
+        selectedDate = null;
+        selectedTime = null;
+        updateTimeSlots();
+        updateBookButton();
+      });
+
+      document.getElementById('nextMonth').addEventListener('click', () => {
+        currentMonth.setMonth(currentMonth.getMonth() + 1);
+        renderCalendar();
+        selectedDate = null;
+        selectedTime = null;
+        updateTimeSlots();
+        updateBookButton();
+      });
+
+      document.getElementById('bookBtn').addEventListener('click', async () => {
+        const err = document.getElementById('bookErr');
+        const success = document.getElementById('bookSuccess');
+        err.textContent = '';
+        success.textContent = '';
+        
+        try {
+          if (!selectedTrainer || !selectedDate || !selectedTime) {
+            throw new Error('Molimo odaberite trenera, datum i vrijeme');
+          }
+          
+          // Check if user already has appointment on this date and time
+          const userAppointments = await get('/api/appointments');
+          const conflictExists = userAppointments.some(a => {
+            const apptDate = new Date(a.scheduled_at);
+            const year = apptDate.getFullYear();
+            const month = String(apptDate.getMonth() + 1).padStart(2, '0');
+            const day = String(apptDate.getDate()).padStart(2, '0');
+            const apptDateStr = `${year}-${month}-${day}`;
+            const hours = apptDate.getHours().toString().padStart(2, '0');
+            const mins = apptDate.getMinutes().toString().padStart(2, '0');
+            const apptTime = `${hours}:${mins}`;
+            return apptDateStr === selectedDate && apptTime === selectedTime;
+          });
+          
+          if (conflictExists) {
+            throw new Error('Već imate termin u odabrano vrijeme i datum');
+          }
+          
+          const iso = new Date(`${selectedDate}T${selectedTime}:00`).toISOString();
+          await post('/api/appointments', { trainerId: selectedTrainer, scheduledAt: iso });
+          await loadAllAppointmentsForFiltering();
+          await loadAppointments();
+          updateTimeSlots();
+          
+          success.textContent = 'Termin je uspješno rezerviran!';
+          
+          setTimeout(() => {
+            success.textContent = '';
+          }, 2000);
+        } catch (e) { 
+          err.textContent = e.message; 
+        }
+      });
+
+      document.getElementById('logoutBtn').addEventListener('click', async () => {
+        await post('/api/logout', {});
+        location.href = '/';
+      });
+      
+      // User filter event listeners
+      document.getElementById('userDateFilter')?.addEventListener('change', (e) => {
+        userFilterDate = e.target.value;
+        renderFilteredUserAppointments();
+      });
+      
+      document.getElementById('clearUserFiltersBtn')?.addEventListener('click', () => {
+        userFilterDate = '';
+        document.getElementById('userDateFilter').value = '';
+        renderFilteredUserAppointments();
+      });
+      
+      // Admin filter event listeners
+      document.getElementById('adminTrainerFilter')?.addEventListener('change', (e) => {
+        adminFilterTrainer = e.target.value;
+        renderFilteredAdminAppointments();
+      });
+      
+      document.getElementById('adminDateFilter')?.addEventListener('change', (e) => {
+        adminFilterDate = e.target.value;
+        renderFilteredAdminAppointments();
+      });
+      
+      document.getElementById('clearFiltersBtn')?.addEventListener('click', () => {
+        adminFilterTrainer = '';
+        adminFilterDate = '';
+        document.getElementById('adminTrainerFilter').value = '';
+        document.getElementById('adminDateFilter').value = '';
+        renderFilteredAdminAppointments();
+      });
+
+      // init
+      (async () => {
+        try {
+          console.log('Loading user info...');
+          const me = await get('/api/me');
+          console.log('User info loaded:', me);
+          isAdmin = me.is_admin;
+          
+          if (isAdmin) {
+            console.log('Loading admin panel...');
+            document.getElementById('pageTitle').textContent = 'Admin panel';
+            document.getElementById('bookingPanel').hidden = true;
+            document.getElementById('userApptPanel').hidden = true;
+            document.getElementById('adminPanel').hidden = false;
+            await populateAdminTrainerFilter();
+            await loadAdminAppointments();
+            console.log('Admin panel loaded');
+          } else {
+            console.log('Loading user panel...');
+            await loadAllAppointmentsForFiltering();
+            console.log('All appointments loaded');
+            await loadTrainers();
+            console.log('Trainers loaded');
+            await loadAppointments();
+            console.log('User appointments loaded');
+          }
+        } catch (e) {
+          console.error('Init error:', e);
+          alert('Error loading data: ' + (e.message || e));
+        }
+      })();
+    </script>
+    </div>
+  </body>
+</html>
