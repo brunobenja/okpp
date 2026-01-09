@@ -22,9 +22,10 @@ app.get("/seed", async (req, res) => {
 
     // Admin
     const adminEmail = "admin@mail.com";
-    const adminPassHash = await bcrypt.hash("admin", 10);
-    await db.createUser("Admin", "", "admin@mail.com", adminPassHash, true);
-    console.log("Admin created");
+   const adminPassHash = await bcrypt.hash("admin", 10);
+   await db.createUser("Admin", "", "admin@mail.com", adminPassHash, true);
+   console.log("Admin created");
+
 
     // ---- REGULAR USERS ----
     const users = [
