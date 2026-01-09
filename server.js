@@ -148,9 +148,14 @@ app.get("/seed", async (req, res) => {
 });
 
 // ---------------- FRONTEND FALLBACK ----------------
-app.get("/*", (req, res) => {
+import path from "path";
+
+const __dirname = path.resolve();
+
+app.use((req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
+
 
 
 // ---------------- START ----------------
