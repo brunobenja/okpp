@@ -1,11 +1,12 @@
 require("dotenv").config();
 const express = require("express");
+const path = require("path");
 const bcrypt = require("bcryptjs");
 const db = require("./index"); // your database module
 
 const app = express();
 app.use(express.json());
-
+app.use(express.static(path.join(__dirname, "public")));
 // ---------------- TEMP DATABASE SEED ----------------
 // REMOVE THIS AFTER FIRST USE!
 app.get("/seed", async (req, res) => {
@@ -164,6 +165,10 @@ app.get("/seed", async (req, res) => {
     console.error(err);
     res.status(500).send("Error seeding database");
   }
+});
+// ROOT ROUTE
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // Start server
