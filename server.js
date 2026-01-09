@@ -2,11 +2,18 @@
 // REMOVE THIS AFTER FIRST USE!
 app.get("/seed", async (req, res) => {
   try {
-    // Admin
-    const adminPassHash = await bcrypt.hash("admin", 10);
-    await db.createUser("Admin", "", "admin@mail.com", adminPassHash, true);
+    // ---- ADMIN ----
+    const adminEmail = "admin@mail.com";
+    const existingAdmin = await db.getUserByEmail(adminEmail);
+    if (!existingAdmin) {
+      const adminPassHash = await bcrypt.hash("admin", 10);
+      await db.createUser("Admin", "", adminEmail, adminPassHash, true);
+      console.log("Admin created");
+    } else {
+      console.log("Admin already exists");
+    }
 
-    // Regular users
+    // ---- REGULAR USERS ----
     const users = [
       {
         name: "Ivan",
@@ -27,12 +34,19 @@ app.get("/seed", async (req, res) => {
         password: "lozinka789",
       },
     ];
+
     for (const u of users) {
-      const hash = await bcrypt.hash(u.password, 10);
-      await db.createUser(u.name, u.surname, u.email, hash, false);
+      const existing = await db.getUserByEmail(u.email);
+      if (!existing) {
+        const hash = await bcrypt.hash(u.password, 10);
+        await db.createUser(u.name, u.surname, u.email, hash, false);
+        console.log(`User created: ${u.email}`);
+      } else {
+        console.log(`User already exists: ${u.email}`);
+      }
     }
 
-    // Trainers
+    // ---- TRAINERS ----
     const trainers = [
       {
         name: "Petar",
@@ -117,14 +131,23 @@ app.get("/seed", async (req, res) => {
     ];
 
     for (const t of trainers) {
-      await db.createTrainer(
-        t.name,
-        t.surname,
-        t.sex,
-        t.age,
-        t.pic,
-        t.yearsExp
+      // Check if trainer with same name & surname exists
+      const existing = (await db.getTrainers()).find(
+        (tr) => tr.name === t.name && tr.surname === t.surname
       );
+      if (!existing) {
+        await db.createTrainer(
+          t.name,
+          t.surname,
+          t.sex,
+          t.age,
+          t.pic,
+          t.yearsExp
+        );
+        console.log(`Trainer created: ${t.name} ${t.surname}`);
+      } else {
+        console.log(`Trainer already exists: ${t.name} ${t.surname}`);
+      }
     }
 
     res.send("Database seeded successfully! Admin, users, and trainers added.");
