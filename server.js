@@ -1,3 +1,5 @@
+
+
 require("dotenv").config();
 const express = require("express");
 const path = require("path");
@@ -5,7 +7,6 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken"); // ADD THIS
 const cookieParser = require("cookie-parser"); // ADD THIS
 const db = require("./index"); // your database module
-
 
 const app = express();
 app.use(express.json());
@@ -17,6 +18,10 @@ const JWT_SECRET = process.env.JWT_SECRET || "dev-secret-change-me";
 // REMOVE THIS AFTER FIRST USE!
 app.get("/seed", async (req, res) => {
   try {
+    // DELETE old users and trainers first
+    await db.query("DELETE FROM treneri CASCADE");
+    await db.query("DELETE FROM korisnici CASCADE");
+
     // Admin
     const adminEmail = "admin@mail.com";
     const existingAdmin = await db.getUserByEmail(adminEmail);
