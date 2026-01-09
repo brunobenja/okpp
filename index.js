@@ -121,9 +121,11 @@ async function getUserByEmail(email) {
   const user = rows[0];
   return {
     ...user,
-    is_admin: Boolean(user.is_admin), // <-- normalize
+    is_admin: Boolean(user.is_admin), // ensures true/false
+    password: user.password, // ensure password is returned
   };
 }
+
 
 
 async function createTrainer(name, surname, sex, age, profilePic = null, yearsExperience = null, userId = null) {

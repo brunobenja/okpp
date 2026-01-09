@@ -2,11 +2,17 @@ require("dotenv").config();
 const express = require("express");
 const path = require("path");
 const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken"); // ADD THIS
+const cookieParser = require("cookie-parser"); // ADD THIS
 const db = require("./index"); // your database module
+
 
 const app = express();
 app.use(express.json());
+app.use(cookieParser()); // ADD THIS
 app.use(express.static(path.join(__dirname, "public")));
+
+const JWT_SECRET = process.env.JWT_SECRET || "dev-secret-change-me";
 // ---------------- TEMP DATABASE SEED ----------------
 // REMOVE THIS AFTER FIRST USE!
 app.get("/seed", async (req, res) => {
@@ -16,7 +22,7 @@ app.get("/seed", async (req, res) => {
     const existingAdmin = await db.getUserByEmail(adminEmail);
     if (!existingAdmin) {
       const adminPassHash = await bcrypt.hash("admin", 10);
-      await db.createUser("Admin", "", "admin@mail.com", adminPassHash, true);
+      await db.createUser("Admin", "", adminEmail, adminPassHash, true);
       console.log("Admin created");
     } else {
       console.log("Admin already exists");
@@ -159,16 +165,56 @@ app.get("/seed", async (req, res) => {
       }
     }
 
-
     res.send("Database seeded successfully!");
   } catch (err) {
     console.error(err);
     res.status(500).send("Error seeding database");
   }
 });
+app.post("/api/login", async (req, res) => {
+  try {
+    const { email, password } = req.body || {};
+    if (!email || !password)
+      return res.status(400).json({ error: "Nedostaju polja" });
+
+    const user = await db.getUserByEmail(email);
+    if (!user)
+      return res.status(401).json({ error: "Neispravni podaci za prijavu" });
+
+    const ok = await bcrypt.compare(password, user.password);
+    if (!ok)
+      return res.status(401).json({ error: "Neispravni podaci za prijavu" });
+
+    const token = jwt.sign(
+      { id: String(user.id), email: user.email, is_admin: user.is_admin },
+      JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    const isProd = process.env.NODE_ENV === "production";
+    res.cookie("auth", token, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: isProd,
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    res.json({
+      id: user.id,
+      name: user.name,
+      surname: user.surname,
+      email: user.email,
+      is_admin: user.is_admin,
+    });
+  } catch (err) {
+    console.error("Login error:", err);
+    res.status(500).json({ error: "Pogreška poslužitelja" });
+  }
+});
+
 // ROOT ROUTE
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
 // Start server
