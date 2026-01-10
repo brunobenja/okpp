@@ -15,6 +15,16 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, "public")));
 
+const isProd = process.env.NODE_ENV === "production";
+
+const cookieOptions = {
+  httpOnly: true,
+  secure: isProd, // REQUIRED for HTTPS
+  sameSite: isProd ? "none" : "lax",
+  path: "/",
+};
+
+
 // ---------------- INIT DB ON START ----------------
 (async () => {
   try {
@@ -53,7 +63,7 @@ app.post("/api/register", async (req, res) => {
     const user = await db.createUser(name, surname, email, hash, false);
 
     const token = jwt.sign({ id: user.id, is_admin: false }, JWT_SECRET);
-    res.cookie("auth", token, { httpOnly: true });
+    res.cookie("auth", token, cookieOptions);
     res.json({ success: true });
   } catch (err) {
     console.error(err);
@@ -75,13 +85,19 @@ app.post("/api/login", async (req, res) => {
       { id: user.id, is_admin: user.is_admin },
       JWT_SECRET
     );
-    res.cookie("auth", token, { httpOnly: true });
+    res.cookie("auth", token, cookieOptions);
     res.json({ success: true });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Login failed" });
   }
 });
+
+app.post("/api/logout", (req, res) => {
+  res.clearCookie("auth", cookieOptions);
+  res.json({ success: true });
+});
+
 
 app.get("/api/me", authRequired, async (req, res) => {
   try {

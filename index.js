@@ -200,6 +200,7 @@ module.exports = {
   seedAdmin,
   createUser,
   getUserByEmail,
+  getUserById,
   createTrainer,
   getTrainers,
   bookAppointment,
