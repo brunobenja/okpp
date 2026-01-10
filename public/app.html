@@ -1091,6 +1091,7 @@
           
           // Check if user already has appointment on this date and time
           const userAppointments = await get('/api/appointments');
+          console.log('userAppointments from API:', userAppointments);
           const conflictExists = userAppointments.some(a => {
             const apptDate = new Date(a.scheduled_at);
             const year = apptDate.getFullYear();
