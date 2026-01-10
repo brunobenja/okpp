@@ -906,30 +906,31 @@
       }
 
       function updateBookButton() {
-    const btn = document.getElementById('bookBtn');
-    const container = document.getElementById('bookFinal');
+        const btn = document.getElementById('bookBtn');
+        const container = document.getElementById('bookFinal');
 
-    if (!selectedTrainer || !selectedDate || !selectedTime) {
-        // button off, container hidden ako nema dovoljno podataka
-        btn.disabled = true;
-        btn.title = '';
-        btn.style.opacity = '1';
-        btn.style.cursor = 'pointer';
-        container.style.display = (selectedTrainer && selectedDate) ? 'block' : 'none';
-        return;
-    }
+        if (!selectedTrainer || !selectedDate || !selectedTime) {
+            // button off, container hidden ako nema dovoljno podataka
+            btn.disabled = true;
+            btn.title = '';
+            btn.style.opacity = '1';
+            btn.style.cursor = 'pointer';
+            container.style.display = (selectedTrainer && selectedDate) ? 'block' : 'none';
+            return;
+        }
 
     container.style.display = 'block';
 
     // Osiguraj da je array
     const appointments = Array.isArray(allUserAppointments) ? allUserAppointments : [];
 
-    const hasConflict = appointments.some(a => {
-        const appt = new Date(a.scheduled_at);
-        const dateStr = appt.toISOString().split('T')[0];    // YYYY-MM-DD
-        const timeStr = appt.toTimeString().slice(0,5);      // HH:MM
-        return dateStr === selectedDate && timeStr === selectedTime;
-    });
+   const hasConflict = allUserAppointments.some(a => {
+    const appt = new Date(a.scheduled_at);
+    const dateStr = appt.toISOString().split('T')[0];
+    const timeStr = appt.toTimeString().slice(0,5);
+    return dateStr === selectedDate && timeStr === selectedTime;
+});
+
 
     if (hasConflict) {
         btn.disabled = true;
@@ -951,15 +952,17 @@
       }
 
       async function loadAppointments() {
-        try {
-          console.log('Fetching appointments...');
-          allUserAppointments = await get('/api/appointments');
-          console.log('Fetched appointments:', allUserAppointments);
-          renderFilteredUserAppointments();
-        } catch (e) {
-          console.error('Error loading appointments:', e);
-        }
-      }
+  try {
+    console.log('Fetching appointments...');
+    const res = await get('/api/appointments');
+    // Ako je res array → koristi ga, ako nije → fallback na res.appointments, inače prazan array
+    allUserAppointments = Array.isArray(res) ? res : (Array.isArray(res.appointments) ? res.appointments : []);
+    console.log('Fetched appointments:', allUserAppointments);
+    renderFilteredUserAppointments();
+  } catch (e) {
+    console.error('Error loading appointments:', e);
+  }
+}
 
       function renderFilteredUserAppointments() {
         const wrap = document.getElementById('apptList');
