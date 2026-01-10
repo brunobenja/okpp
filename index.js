@@ -125,6 +125,20 @@ async function getUserByEmail(email) {
     password: user.password, // ensure password is returned
   };
 }
+async function getUserById(id) {
+  const { rows } = await query("SELECT * FROM korisnici WHERE id = $1", [id]);
+
+  if (!rows.length) return null;
+
+  const user = rows[0];
+
+  return {
+    ...user,
+    is_admin: Boolean(user.is_admin),
+  };
+}
+
+
 
 
 
