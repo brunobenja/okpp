@@ -132,6 +132,93 @@ app.get("/api/trainers", async (req, res) => {
   }
 });
 
+// ---------------- APPOINTMENTS (USER) ----------------
+app.get("/api/appointments", authRequired, async (req, res) => {
+  try {
+    const appts = await db.getAppointmentsForUser(req.user.id);
+    res.json(appts);
+  } catch (err) {
+    console.error("GET /api/appointments failed:", err);
+    res.status(500).json({ error: "Failed to load appointments" });
+  }
+});
+
+// Return all appointments (used for availability checks)
+app.get("/api/appointments/all", authRequired, async (req, res) => {
+  try {
+    const appts = await db.getAllAppointments();
+    res.json(appts);
+  } catch (err) {
+    console.error("GET /api/appointments/all failed:", err);
+    res.status(500).json({ error: "Failed to load appointments" });
+  }
+});
+
+app.post("/api/appointments", authRequired, async (req, res) => {
+  try {
+    const { trainerId, scheduledAt } = req.body;
+    if (!trainerId || !scheduledAt)
+      return res.status(400).json({ error: "Missing fields" });
+
+    const created = await db.bookAppointment(req.user.id, trainerId, scheduledAt);
+
+    // Return joined appointment with trainer info for client convenience
+    const { rows } = await db.query(
+      `SELECT a.id, a.scheduled_at, a.trainer_id, t.name AS trainer_name, t.surname AS trainer_surname
+       FROM termini a JOIN treneri t ON t.id = a.trainer_id WHERE a.id = $1`,
+      [created.id]
+    );
+
+    res.json(rows[0] || created);
+  } catch (err) {
+    console.error("POST /api/appointments failed:", err);
+    res.status(500).json({ error: err.message || "Failed to create appointment" });
+  }
+});
+
+app.delete("/api/appointments/:id", authRequired, async (req, res) => {
+  try {
+    const id = req.params.id;
+
+    // Ensure user owns the appointment (or is admin)
+    const { rows } = await db.query("SELECT user_id FROM termini WHERE id = $1", [id]);
+    if (!rows.length) return res.status(404).json({ error: "Not found" });
+    const ownerId = rows[0].user_id;
+    if (req.user.id !== ownerId && !req.user.is_admin)
+      return res.status(403).json({ error: "Forbidden" });
+
+    await db.deleteAppointment(id);
+    res.json({ success: true });
+  } catch (err) {
+    console.error("DELETE /api/appointments/:id failed:", err);
+    res.status(500).json({ error: "Failed to delete" });
+  }
+});
+
+// ---------------- ADMIN APPOINTMENTS ----------------
+app.get("/api/admin/appointments", authRequired, async (req, res) => {
+  try {
+    if (!req.user.is_admin) return res.status(403).json({ error: "Forbidden" });
+    const appts = await db.getAllAppointments();
+    res.json(appts);
+  } catch (err) {
+    console.error("GET /api/admin/appointments failed:", err);
+    res.status(500).json({ error: "Failed to load admin appointments" });
+  }
+});
+
+app.delete("/api/admin/appointments/:id", authRequired, async (req, res) => {
+  try {
+    if (!req.user.is_admin) return res.status(403).json({ error: "Forbidden" });
+    const id = req.params.id;
+    await db.deleteAppointment(id);
+    res.json({ success: true });
+  } catch (err) {
+    console.error("DELETE /api/admin/appointments/:id failed:", err);
+    res.status(500).json({ error: "Failed to delete appointment" });
+  }
+});
+
 // ---------------- SEED (DEV ONLY) ----------------
 app.get("/seed", async (req, res) => {
   try {
