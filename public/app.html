@@ -906,44 +906,40 @@
       }
 
       function updateBookButton() {
-        const btn = document.getElementById('bookBtn');
-        const container = document.getElementById('bookFinal');
+      const btn = document.getElementById('bookBtn');
+      const container = document.getElementById('bookFinal');
 
-        if (!selectedTrainer || !selectedDate || !selectedTime) {
-            // button off, container hidden ako nema dovoljno podataka
-            btn.disabled = true;
-            btn.title = '';
-            btn.style.opacity = '1';
-            btn.style.cursor = 'pointer';
-            container.style.display = (selectedTrainer && selectedDate) ? 'block' : 'none';
-            return;
-        }
+      if (!selectedTrainer || !selectedDate || !selectedTime) {
+        btn.disabled = true;
+        btn.title = '';
+        btn.style.opacity = '1';
+        btn.style.cursor = 'pointer';
+        container.style.display = (selectedTrainer && selectedDate) ? 'block' : 'none';
+        return;
+      }
 
-    container.style.display = 'block';
+      container.style.display = 'block';
 
-    // Osiguraj da je array
-    const appointments = Array.isArray(allUserAppointments) ? allUserAppointments : [];
+      const hasConflict = allUserAppointments.some(a => {
+        const appt = new Date(a.scheduled_at);
+        const dateStr = appt.toISOString().split('T')[0];
+        const timeStr = appt.toTimeString().slice(0,5);
+        return dateStr === selectedDate && timeStr === selectedTime;
+      });
 
-   const hasConflict = allUserAppointments.some(a => {
-    const appt = new Date(a.scheduled_at);
-    const dateStr = appt.toISOString().split('T')[0];
-    const timeStr = appt.toTimeString().slice(0,5);
-    return dateStr === selectedDate && timeStr === selectedTime;
-});
-
-
-    if (hasConflict) {
+      if (hasConflict) {
         btn.disabled = true;
         btn.title = 'Već imate termin u ovom vremenu';
         btn.style.opacity = '0.5';
         btn.style.cursor = 'not-allowed';
-    } else {
+      } else {
         btn.disabled = false;
         btn.title = '';
         btn.style.opacity = '1';
         btn.style.cursor = 'pointer';
+      }
     }
-}
+
 
 
       function fmt(dt) {
@@ -955,10 +951,18 @@
   try {
     console.log('Fetching appointments...');
     const res = await get('/api/appointments');
-    // Ako je res array → koristi ga, ako nije → fallback na res.appointments, inače prazan array
-    allUserAppointments = Array.isArray(res) ? res : (Array.isArray(res.appointments) ? res.appointments : []);
-    console.log('Fetched appointments:', allUserAppointments);
+
+    // Normaliziraj odgovor u array
+    allUserAppointments = Array.isArray(res)
+      ? res
+      : Array.isArray(res.appointments)
+        ? res.appointments
+        : [];
+
+    console.log('Loaded user appointments:', allUserAppointments);
     renderFilteredUserAppointments();
+    updateTimeSlots();
+    updateBookButton();
   } catch (e) {
     console.error('Error loading appointments:', e);
   }
@@ -1082,50 +1086,56 @@
       });
 
       document.getElementById('bookBtn').addEventListener('click', async () => {
-        const err = document.getElementById('bookErr');
-        const success = document.getElementById('bookSuccess');
-        err.textContent = '';
-        success.textContent = '';
+  const err = document.getElementById('bookErr');
+  const success = document.getElementById('bookSuccess');
+  err.textContent = '';
+  success.textContent = '';
         
         try {
-          if (!selectedTrainer || !selectedDate || !selectedTime) {
-            throw new Error('Molimo odaberite trenera, datum i vrijeme');
-          }
+    if (!selectedTrainer || !selectedDate || !selectedTime) {
+      throw new Error('Molimo odaberite trenera, datum i vrijeme');
+    }
           
-          // Check if user already has appointment on this date and time
-          const userAppointments = await get('/api/appointments');
-          console.log('userAppointments from API:', userAppointments);
-          const conflictExists = userAppointments.some(a => {
-            const apptDate = new Date(a.scheduled_at);
-            const year = apptDate.getFullYear();
-            const month = String(apptDate.getMonth() + 1).padStart(2, '0');
-            const day = String(apptDate.getDate()).padStart(2, '0');
-            const apptDateStr = `${year}-${month}-${day}`;
-            const hours = apptDate.getHours().toString().padStart(2, '0');
-            const mins = apptDate.getMinutes().toString().padStart(2, '0');
-            const apptTime = `${hours}:${mins}`;
-            return apptDateStr === selectedDate && apptTime === selectedTime;
-          });
+          // Dobavi i normaliziraj user appointments
+    let userAppointments = await get('/api/appointments');
+    userAppointments = Array.isArray(userAppointments)
+      ? userAppointments
+      : Array.isArray(userAppointments.appointments)
+        ? userAppointments.appointments
+        : [];
+
+    console.log('Normalized userAppointments:', userAppointments);
+
+  // Provjeri conflict
+    const conflictExists = userAppointments.some(a => {
+      const apptDate = new Date(a.scheduled_at);
+      const dateStr = apptDate.toISOString().split('T')[0];
+      const timeStr = apptDate.toTimeString().slice(0,5);
+      return dateStr === selectedDate && timeStr === selectedTime;
+    });
+
+
           
           if (conflictExists) {
             throw new Error('Već imate termin u odabrano vrijeme i datum');
           }
           
-          const iso = new Date(`${selectedDate}T${selectedTime}:00`).toISOString();
-          await post('/api/appointments', { trainerId: selectedTrainer, scheduledAt: iso });
-          await loadAllAppointmentsForFiltering();
-          await loadAppointments();
-          updateTimeSlots();
-          
-          success.textContent = 'Termin je uspješno rezerviran!';
-          
-          setTimeout(() => {
-            success.textContent = '';
-          }, 2000);
-        } catch (e) { 
-          err.textContent = e.message; 
-        }
-      });
+         // Pošalji rezervaciju
+    const iso = new Date(`${selectedDate}T${selectedTime}:00`).toISOString();
+    await post('/api/appointments', { trainerId: selectedTrainer, scheduledAt: iso });
+
+             // Refresh podataka
+    await loadAllAppointmentsForFiltering();
+    await loadAppointments();
+    updateTimeSlots();
+
+         success.textContent = 'Termin je uspješno rezerviran!';
+    setTimeout(() => { success.textContent = ''; }, 2000);
+
+  } catch (e) {
+    err.textContent = e.message;
+  }
+});
 
       document.getElementById('logoutBtn').addEventListener('click', async () => {
         await post('/api/logout', {});
