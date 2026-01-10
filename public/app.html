@@ -839,106 +839,106 @@
         updateBookButton();
       }
 
-      function updateTimeSlots() {
-    const container = document.getElementById('timeSlots');
-    const grid = document.getElementById('timeGrid');
+     function updateTimeSlots() {
+  const container = document.getElementById('timeSlots');
+  const grid = document.getElementById('timeGrid');
+
     
-    if (!selectedTrainer || !selectedDate) {
-      container.style.display = 'none';
-      return;
+ if (!selectedTrainer || !selectedDate) {
+    container.style.display = 'none';
+    return;
+  }
+    
+ 
+  container.style.display = 'block';
+  grid.innerHTML = '';
+
+    // Trainer appointments
+  const trainerAppointments = allAppointments.filter(a => String(a.trainer_id) === String(selectedTrainer));
+  const bookedTimes = new Set();
+  trainerAppointments.forEach(a => {
+    const dateStr = new Date(a.scheduled_at).toISOString().split('T')[0];
+    if (dateStr === selectedDate) {
+      const time = new Date(a.scheduled_at).toTimeString().slice(0,5);
+      bookedTimes.add(time);
     }
-    
-    container.style.display = 'block';
-    grid.innerHTML = '';
+  });
 
-    // osiguraj da su array-i
-    const appointments = Array.isArray(allAppointments) ? allAppointments : (allAppointments.appointments || []);
-    const userAppointments = Array.isArray(allUserAppointments) ? allUserAppointments : (allUserAppointments.appointments || []);
 
-    console.log('updateTimeSlots:', { selectedTrainer, selectedDate, appointments, userAppointments });
 
-    const bookedTimes = new Set();
-    appointments.forEach(a => {
-      if (String(a.trainer_id) === String(selectedTrainer)) {
-        const apptDate = new Date(a.scheduled_at);
-        const dateStr = apptDate.toISOString().split('T')[0]; // YYYY-MM-DD
-        if (dateStr === selectedDate) {
-          const time = apptDate.toTimeString().slice(0,5); // HH:MM
-          bookedTimes.add(time);
-        }
-      }
-    });
+ // User appointments
+  const userBookedTimes = new Set();
+  allUserAppointments.forEach(a => {
+    const dateStr = new Date(a.scheduled_at).toISOString().split('T')[0];
+    if (dateStr === selectedDate) {
+      const time = new Date(a.scheduled_at).toTimeString().slice(0,5);
+      userBookedTimes.add(time);
+    }
+  });
 
-    const userBookedTimes = new Set();
-    userAppointments.forEach(a => {
-      const apptDate = new Date(a.scheduled_at);
-      const dateStr = apptDate.toISOString().split('T')[0];
-      if (dateStr === selectedDate) {
-        const time = apptDate.toTimeString().slice(0,5);
-        userBookedTimes.add(time);
-      }
-    });
 
-    allTimeSlots.forEach(time => {
-      const btn = document.createElement('button');
-      btn.className = 'time-btn';
-      btn.textContent = time;
 
-      const isTrainerBlocked = bookedTimes.has(time);
-      const isUserBlocked = userBookedTimes.has(time);
-      btn.disabled = isTrainerBlocked || isUserBlocked;
+  // Render buttons
+  allTimeSlots.forEach(time => {
+    const btn = document.createElement('button');
+    btn.className = 'time-btn';
+    btn.textContent = time;
 
-      btn.title = isUserBlocked ? 'Već imate termin u ovom vremenu' :
-                  isTrainerBlocked ? 'Trener je zauzet u ovom terminu' : '';
+    const isTrainerBlocked = bookedTimes.has(time);
+    const isUserBlocked = userBookedTimes.has(time);
+    btn.disabled = isTrainerBlocked || isUserBlocked;
 
-      if (selectedTime === time) btn.classList.add('selected');
-      if (!btn.disabled) btn.onclick = () => selectTime(time);
+    btn.title = isUserBlocked ? 'Već imate termin u ovom vremenu' :
+                isTrainerBlocked ? 'Trener je zauzet u ovom terminu' : '';
 
-      grid.appendChild(btn);
-    });
+    if (selectedTime === time) btn.classList.add('selected');
+    if (!btn.disabled) btn.onclick = () => selectTime(time);
+
+    grid.appendChild(btn);
+  });
 }
 
 
-      function selectTime(time) {
-        selectedTime = time;
-        updateTimeSlots();
-        updateBookButton();
-      }
+     // -----------------------------
+// Odabir vremena i update buttona
+// -----------------------------
+function selectTime(time) {
+  selectedTime = time;
+  updateTimeSlots();
+  updateBookButton();
+}
 
       function updateBookButton() {
-      const btn = document.getElementById('bookBtn');
-      const container = document.getElementById('bookFinal');
+  const btn = document.getElementById('bookBtn');
+  const container = document.getElementById('bookFinal');
 
-      if (!selectedTrainer || !selectedDate || !selectedTime) {
-        btn.disabled = true;
-        btn.title = '';
-        btn.style.opacity = '1';
-        btn.style.cursor = 'pointer';
-        container.style.display = (selectedTrainer && selectedDate) ? 'block' : 'none';
-        return;
-      }
+  if (!selectedTrainer || !selectedDate || !selectedTime) {
+    btn.disabled = true;
+    btn.title = '';
+    container.style.display = (selectedTrainer && selectedDate) ? 'block' : 'none';
+    return;
+  }
 
-      container.style.display = 'block';
+  container.style.display = 'block';
 
-      const hasConflict = allUserAppointments.some(a => {
-        const appt = new Date(a.scheduled_at);
-        const dateStr = appt.toISOString().split('T')[0];
-        const timeStr = appt.toTimeString().slice(0,5);
-        return dateStr === selectedDate && timeStr === selectedTime;
-      });
-
-      if (hasConflict) {
-        btn.disabled = true;
-        btn.title = 'Već imate termin u ovom vremenu';
-        btn.style.opacity = '0.5';
-        btn.style.cursor = 'not-allowed';
-      } else {
-        btn.disabled = false;
-        btn.title = '';
-        btn.style.opacity = '1';
-        btn.style.cursor = 'pointer';
-      }
-    }
+      // Provjera konflikta u lokalnom array-u
+  const hasConflict = allUserAppointments.some(a => {
+    const dateStr = new Date(a.scheduled_at).toISOString().split('T')[0];
+    const timeStr = new Date(a.scheduled_at).toTimeString().slice(0,5);
+    return dateStr === selectedDate && timeStr === selectedTime;
+  });
+  if (hasConflict) {
+    btn.disabled = true;
+    btn.title = 'Već imate termin u ovom vremenu';
+    btn.style.opacity = '0.5';
+    btn.style.cursor = 'not-allowed';
+  } else {
+    btn.disabled = false;
+    btn.title = '';
+    btn.style.opacity = '1';
+    btn.style.cursor = 'pointer';
+  }
+}
 
 
 
@@ -1085,51 +1085,51 @@
         updateBookButton();
       });
 
-      document.getElementById('bookBtn').addEventListener('click', async () => {
+ document.getElementById('bookBtn').addEventListener('click', async () => {
   const err = document.getElementById('bookErr');
   const success = document.getElementById('bookSuccess');
   err.textContent = '';
   success.textContent = '';
         
-        try {
+  try {
     if (!selectedTrainer || !selectedDate || !selectedTime) {
       throw new Error('Molimo odaberite trenera, datum i vrijeme');
     }
-          
-          // Dobavi i normaliziraj user appointments
-    let userAppointments = await get('/api/appointments');
-    userAppointments = Array.isArray(userAppointments)
-      ? userAppointments
-      : Array.isArray(userAppointments.appointments)
-        ? userAppointments.appointments
-        : [];
-
-    console.log('Normalized userAppointments:', userAppointments);
-
-  // Provjeri conflict
-    const conflictExists = userAppointments.some(a => {
-      const apptDate = new Date(a.scheduled_at);
-      const dateStr = apptDate.toISOString().split('T')[0];
-      const timeStr = apptDate.toTimeString().slice(0,5);
+     // Provjera konflikta lokalno
+    const conflictExists = allUserAppointments.some(a => {
+      const dateStr = new Date(a.scheduled_at).toISOString().split('T')[0];
+      const timeStr = new Date(a.scheduled_at).toTimeString().slice(0,5);
       return dateStr === selectedDate && timeStr === selectedTime;
     });
 
 
+    if (conflictExists) {
+      throw new Error('Već imate termin u odabrano vrijeme i datum');
+    }
           
-          if (conflictExists) {
-            throw new Error('Već imate termin u odabrano vrijeme i datum');
-          }
-          
-         // Pošalji rezervaciju
     const iso = new Date(`${selectedDate}T${selectedTime}:00`).toISOString();
-    await post('/api/appointments', { trainerId: selectedTrainer, scheduledAt: iso });
 
-             // Refresh podataka
-    await loadAllAppointmentsForFiltering();
-    await loadAppointments();
+    // Pošalji na backend
+    const newAppt = await post('/api/appointments', { trainerId: selectedTrainer, scheduledAt: iso });
+
+    // Dodaj odmah u lokalni array
+    const trainerNameElem = document.querySelector('.trainer-card.selected .trainer-name');
+    const [trainer_name, trainer_surname] = trainerNameElem.textContent.split(' ');
+
+    allUserAppointments.push({
+      id: newAppt.id,       // vraća API ID
+      trainer_id: selectedTrainer,
+      trainer_name,
+      trainer_surname,
+      scheduled_at: iso
+    });
+
+    // Rerender UI
+    renderFilteredUserAppointments();
     updateTimeSlots();
+    updateBookButton();
 
-         success.textContent = 'Termin je uspješno rezerviran!';
+    success.textContent = 'Termin je uspješno rezerviran!';
     setTimeout(() => { success.textContent = ''; }, 2000);
 
   } catch (e) {
