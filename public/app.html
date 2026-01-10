@@ -906,48 +906,44 @@
       }
 
       function updateBookButton() {
-        const btn = document.getElementById('bookBtn');
-        const container = document.getElementById('bookFinal');
-        
-        if (selectedTrainer && selectedDate && selectedTime) {
-          container.style.display = 'block';
-          
-          // Check if user already has an appointment at this date and time
-          const hasConflict = allUserAppointments.some(a => {
-            const apptDate = new Date(a.scheduled_at);
-            const year = apptDate.getFullYear();
-            const month = String(apptDate.getMonth() + 1).padStart(2, '0');
-            const day = String(apptDate.getDate()).padStart(2, '0');
-            const apptDateStr = `${year}-${month}-${day}`;
-            const hours = apptDate.getHours().toString().padStart(2, '0');
-            const mins = apptDate.getMinutes().toString().padStart(2, '0');
-            const apptTime = `${hours}:${mins}`;
-            return apptDateStr === selectedDate && apptTime === selectedTime;
-          });
-          
-          if (hasConflict) {
-            btn.disabled = true;
-            btn.title = 'Već imate termin u ovom vremenu';
-            btn.style.opacity = '0.5';
-            btn.style.cursor = 'not-allowed';
-          } else {
-            btn.disabled = false;
-            btn.title = '';
-            btn.style.opacity = '1';
-            btn.style.cursor = 'pointer';
-          }
-        } else {
-          if (selectedTrainer && selectedDate) {
-            container.style.display = 'block';
-          } else {
-            container.style.display = 'none';
-          }
-          btn.disabled = true;
-          btn.title = '';
-          btn.style.opacity = '1';
-          btn.style.cursor = 'pointer';
-        }
-      }
+    const btn = document.getElementById('bookBtn');
+    const container = document.getElementById('bookFinal');
+
+    if (!selectedTrainer || !selectedDate || !selectedTime) {
+        // button off, container hidden ako nema dovoljno podataka
+        btn.disabled = true;
+        btn.title = '';
+        btn.style.opacity = '1';
+        btn.style.cursor = 'pointer';
+        container.style.display = (selectedTrainer && selectedDate) ? 'block' : 'none';
+        return;
+    }
+
+    container.style.display = 'block';
+
+    // Osiguraj da je array
+    const appointments = Array.isArray(allUserAppointments) ? allUserAppointments : [];
+
+    const hasConflict = appointments.some(a => {
+        const appt = new Date(a.scheduled_at);
+        const dateStr = appt.toISOString().split('T')[0];    // YYYY-MM-DD
+        const timeStr = appt.toTimeString().slice(0,5);      // HH:MM
+        return dateStr === selectedDate && timeStr === selectedTime;
+    });
+
+    if (hasConflict) {
+        btn.disabled = true;
+        btn.title = 'Već imate termin u ovom vremenu';
+        btn.style.opacity = '0.5';
+        btn.style.cursor = 'not-allowed';
+    } else {
+        btn.disabled = false;
+        btn.title = '';
+        btn.style.opacity = '1';
+        btn.style.cursor = 'pointer';
+    }
+}
+
 
       function fmt(dt) {
         const d = new Date(dt);
