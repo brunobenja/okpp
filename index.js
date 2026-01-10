@@ -31,9 +31,9 @@ async function query(text, params) {
 // Create required tables
 async function init() {
   // Drop existing English-named tables if they exist
-  await query(`DROP TABLE IF EXISTS appointments CASCADE`);
-  await query(`DROP TABLE IF EXISTS trainers CASCADE`);
-  await query(`DROP TABLE IF EXISTS users CASCADE`);
+  //await query(`DROP TABLE IF EXISTS appointments CASCADE`);
+  //await query(`DROP TABLE IF EXISTS trainers CASCADE`);
+  //await query(`DROP TABLE IF EXISTS users CASCADE`);
 
   // Create Croatian-named tables
   await query(`
