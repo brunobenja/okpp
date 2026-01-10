@@ -826,7 +826,8 @@
           trainers.forEach((t) => {
             const card = document.createElement("div");
             card.className = "trainer-card";
-            card.onclick = () => selectTrainer(t.id);
+            card.dataset.trainerId = t.id;
+            card.onclick = () => selectTrainer(t.id, card);
 
             const avatar = document.createElement("div");
             avatar.className = "trainer-avatar";
@@ -857,22 +858,24 @@
           });
         }
 
-        function selectTrainer(trainerId) {
+        function selectTrainer(trainerId, el) {
           selectedTrainer = trainerId;
           selectedDate = null;
           selectedTime = null;
 
           // Update UI
-          document.querySelectorAll('.trainer-card').forEach(card => card.classList.remove('selected'));
-  el.classList.add('selected');
+          document
+            .querySelectorAll(".trainer-card")
+            .forEach((card) => card.classList.remove("selected"));
+          if (el && el.classList) el.classList.add("selected");
 
-            document.getElementById('calendarContainer').style.display = 'block';
-  currentMonth = new Date();
-  renderCalendar();
+          document.getElementById("calendarContainer").style.display = "block";
+          currentMonth = new Date();
+          renderCalendar();
 
-  document.getElementById('timeSlots').style.display = 'none';
-  document.getElementById('bookFinal').style.display = 'none';
-}
+          document.getElementById("timeSlots").style.display = "none";
+          document.getElementById("bookFinal").style.display = "none";
+        }
 
         function renderCalendar() {
           const grid = document.getElementById("calendarGrid");
