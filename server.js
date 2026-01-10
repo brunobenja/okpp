@@ -84,15 +84,26 @@ app.post("/api/login", async (req, res) => {
 });
 
 app.get("/api/me", authRequired, async (req, res) => {
-  const user = await db.getUserById(req.user.id);
-  res.json({
-    id: user.id,
-    name: user.name,
-    surname: user.surname,
-    email: user.email,
-    is_admin: user.is_admin,
-  });
+  try {
+    const user = await db.getUserById(req.user.id);
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    res.json({
+      id: user.id,
+      name: user.name,
+      surname: user.surname,
+      email: user.email,
+      is_admin: user.is_admin,
+    });
+  } catch (err) {
+    console.error("GET /api/me failed:", err);
+    res.status(500).json({ error: "Failed to load user" });
+  }
 });
+
 
 // ---------------- DATA ROUTES ----------------
 app.get("/api/trainers", async (req, res) => {
