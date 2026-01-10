@@ -137,7 +137,7 @@ async function createTrainer(name, surname, sex, age, profilePic = null, yearsEx
 }
 async function getTrainers() {
   const { rows } = await query(
-    "SELECT id, name, surname, sex, age, yearsExp, pic AS profile_pic FROM treneri"
+    "SELECT id, name, surname, sex, age, years_experience, profile_pic FROM treneri"
   );
   return rows; // must return array
 }
