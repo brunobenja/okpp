@@ -1014,42 +1014,45 @@
       async function loadAdminAppointments() {
         if (!isAdmin) return;
         allAdminAppointments = await get('/api/admin/appointments');
+        if (!Array.isArray(allAdminAppointments)) {
+          allAdminAppointments = allAdminAppointments.appointments || [];
+        }
         renderFilteredAdminAppointments();
       }
       
       function renderFilteredAdminAppointments() {
-        const wrap = document.getElementById('adminApptList');
-        let list = [...allAdminAppointments];
-        
+  const wrap = document.getElementById('adminApptList');
+  if (!Array.isArray(allAdminAppointments)) allAdminAppointments = [];
+  let list = [...allAdminAppointments];
         // Apply trainer filter
-        if (adminFilterTrainer) {
-          list = list.filter(a => a.trainer_id == adminFilterTrainer);
-        }
+  if (adminFilterTrainer) {
+    list = list.filter(a => a.trainer_id == adminFilterTrainer);
+  }
         
         // Apply date filter
-        if (adminFilterDate) {
-          list = list.filter(a => {
-            const apptDate = new Date(a.scheduled_at);
-            const filterDate = new Date(adminFilterDate);
-            return apptDate.toDateString() === filterDate.toDateString();
-          });
-        }
+  if (adminFilterDate) {
+    list = list.filter(a => {
+      const apptDate = new Date(a.scheduled_at);
+      const filterDate = new Date(adminFilterDate);
+      return apptDate.toDateString() === filterDate.toDateString();
+    });
+  }
         
-        if (!list || list.length === 0) { 
-          wrap.textContent = 'Nema termina koji odgovaraju filtrima.'; 
-          return; 
-        }
+    if (!list || list.length === 0) { 
+    wrap.textContent = 'Nema termina koji odgovaraju filtrima.'; 
+    return; 
+  }
         
-        const rows = list.map(a => {
-          return `<tr>
-            <td>${fmt(a.scheduled_at)}</td>
-            <td>${a.user_name} ${a.user_surname} (${a.user_email})</td>
-            <td>${a.trainer_name} ${a.trainer_surname}</td>
-            <td><button class="del-btn" onclick="showDeleteConfirm(${a.id}, 'admin')">Obriši</button></td>
-          </tr>`;
-        }).join('');
-        wrap.innerHTML = `<table><thead><tr><th>Vrijeme</th><th>Korisnik</th><th>Trener</th><th>Radnja</th></tr></thead><tbody>${rows}</tbody></table>`;
-      }
+       const rows = list.map(a => {
+    return `<tr>
+      <td>${fmt(a.scheduled_at)}</td>
+      <td>${a.user_name} ${a.user_surname} (${a.user_email})</td>
+      <td>${a.trainer_name} ${a.trainer_surname}</td>
+      <td><button class="del-btn" onclick="showDeleteConfirm(${a.id}, 'admin')">Obriši</button></td>
+    </tr>`;
+  }).join('');
+  wrap.innerHTML = `<table><thead><tr><th>Vrijeme</th><th>Korisnik</th><th>Trener</th><th>Radnja</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
       
       async function populateAdminTrainerFilter() {
         const trainers = await get('/api/trainers');
