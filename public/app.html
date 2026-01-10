@@ -863,20 +863,16 @@
           selectedTime = null;
 
           // Update UI
-          document.querySelectorAll(".trainer-card").forEach((card) => {
-            card.classList.remove("selected");
-          });
-          event.currentTarget.classList.add("selected");
+          document.querySelectorAll('.trainer-card').forEach(card => card.classList.remove('selected'));
+  el.classList.add('selected');
 
-          const calendarContainer =
-            document.getElementById("calendarContainer");
-          calendarContainer.style.display = "block";
-          currentMonth = new Date();
-          renderCalendar();
+            document.getElementById('calendarContainer').style.display = 'block';
+  currentMonth = new Date();
+  renderCalendar();
 
-          document.getElementById("timeSlots").style.display = "none";
-          document.getElementById("bookFinal").style.display = "none";
-        }
+  document.getElementById('timeSlots').style.display = 'none';
+  document.getElementById('bookFinal').style.display = 'none';
+}
 
         function renderCalendar() {
           const grid = document.getElementById("calendarGrid");
