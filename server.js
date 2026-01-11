@@ -268,9 +268,12 @@ app.get("/seed", async (req, res) => {
 
     // ---------- USERS ----------
     const users = [
+      ["user", "user", "user@mail.com", "user"],
+      /*
       ["Ivan", "Horvat", "ivan.horvat@mail.com", "lozinka123"],
       ["Ana", "Kovač", "ana.kovac@mail.com", "lozinka456"],
       ["Marko", "Novak", "marko.novak@mail.com", "lozinka789"],
+      */
     ];
 
     for (const [n, s, e, p] of users) {
@@ -286,16 +289,11 @@ app.get("/seed", async (req, res) => {
 
     // ---------- TRAINERS ----------
     const trainers = [
-      ["Petar", "Babić", "M", 28, 5],
-      ["Marija", "Jurić", "F", 32, 8],
-      ["Luka", "Knežević", "M", 35, 10],
-      ["Ivana", "Marić", "F", 27, 4],
-      ["Krešimir", "Perić", "M", 30, 7],
-      ["Jelena", "Radić", "F", 29, 6],
-      ["Tomislav", "Božić", "M", 33, 9],
-      ["Sara", "Pavić", "F", 26, 3],
-      ["Nikola", "Petrović", "M", 31, 8],
-      ["Maja", "Vuković", "F", 28, 5],
+      ["Petar", "Babić", "M", 28, 5], /*M osobni trener*/
+      ["Marko", "Novak", "M", 30, 6], /*M grupni trener*/
+      ["Ana", "Kovač", "F", 25, 3],  /*Z osobna trenerica*/
+      ["Marija", "Jurić", "F", 32, 8],/*Z grupna trenerica*/
+      ["Luka", "Knežević", "M", 35, 10], /*M osobni trener*/
     ];
 
     const existingTrainers = await db.getTrainers();
