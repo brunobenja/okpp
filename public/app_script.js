@@ -146,59 +146,59 @@ async function loadAllAppointmentsForFiltering() {
 }
 // Funkcija za učitavanje trenera
 async function loadTrainers() {
-  // Dohvati sve trenere s API-ja
   const trainers = await get("/api/trainers");
 
-  // Filtriraj po tipovima
-  const personalTrainers = trainers.filter((t) => t.type === "personal");
-  const groupTrainers = trainers.filter((t) => t.type === "group");
-  const rehabTrainers = trainers.filter((t) => t.type === "rehabilitation");
+  const grid = document.getElementById("personal"); // koristimo jedan grid
+  grid.innerHTML = ""; // očisti postojeće
 
-  // Funkcija za render grid-a
-  function renderGrid(trainersArray, gridId) {
-    const grid = document.getElementById(gridId);
-    grid.innerHTML = ""; // očisti postojeće
+  trainers.forEach((t) => {
+    const card = document.createElement("div");
+    card.className = "trainer-card";
 
-    trainersArray.forEach((t) => {
-      const card = document.createElement("div");
-      card.className = "trainer-card";
-      card.dataset.trainerId = t.id;
-      card.onclick = () => selectTrainer(t.id, card);
+    // Boja border-a prema tipu
+    if (t.type === "personal") card.style.border = "2px solid green";
+    else if (t.type === "group") card.style.border = "2px solid orange";
+    else if (t.type === "rehabilitation") card.style.border = "2px solid blue";
 
-      const avatar = document.createElement("div");
-      avatar.className = "trainer-avatar";
+    card.dataset.trainerId = t.id;
+    card.onclick = () => selectTrainer(t.id, card);
 
-      if (t.profile_pic) {
-        const img = document.createElement("img");
-        img.src = t.profile_pic;
-        img.alt = `${t.name} ${t.surname}`;
-        img.style.width = "100%";
-        img.style.height = "100%";
-        img.style.borderRadius = "50%";
-        img.style.objectFit = "cover";
-        avatar.appendChild(img);
-      } else {
-        const initials = `${(t.name || "").charAt(0)}${(t.surname || "").charAt(
-          0
-        )}`.toUpperCase();
-        avatar.textContent = initials || "TR";
-      }
+    const avatar = document.createElement("div");
+    avatar.className = "trainer-avatar";
 
-      const name = document.createElement("div");
-      name.className = "trainer-name";
-      name.textContent = `${t.name} ${t.surname}`;
+    if (t.profile_pic) {
+      const img = document.createElement("img");
+      img.src = t.profile_pic;
+      img.alt = `${t.name} ${t.surname}`;
+      img.style.width = "100%";
+      img.style.height = "100%";
+      img.style.borderRadius = "50%";
+      img.style.objectFit = "cover";
+      avatar.appendChild(img);
+    } else {
+      const initials = `${(t.name || "").charAt(0)}${(t.surname || "").charAt(
+        0
+      )}`.toUpperCase();
+      avatar.textContent = initials || "TR";
+    }
 
-      card.appendChild(avatar);
-      card.appendChild(name);
-      grid.appendChild(card);
-    });
-  }
+    const name = document.createElement("div");
+    name.className = "trainer-name";
+    name.textContent = `${t.name} ${t.surname}`;
 
-  // Render svakog tipa u zasebne gridove
-  renderGrid(personalTrainers, "personal");
-  renderGrid(groupTrainers, "group");
-  renderGrid(rehabTrainers, "rehab");
+    const typeLabel = document.createElement("div");
+    typeLabel.className = "trainer-type";
+    typeLabel.textContent = t.type; // ispis tipa ispod imena
+    typeLabel.style.fontSize = "12px";
+    typeLabel.style.color = "#555";
+
+    card.appendChild(avatar);
+    card.appendChild(name);
+    card.appendChild(typeLabel);
+    grid.appendChild(card);
+  });
 }
+
 
 // Funkcija za odabir trenera
 // preserveSelection: if true, do not clear selectedDate/selectedTime or hide booking UI
