@@ -193,6 +193,14 @@ async function deleteAppointment(id) {
   await query('DELETE FROM termini WHERE id = $1', [id]);
 }
 
+async function updateAppointment(id, trainerId, scheduledAt) {
+  const { rows } = await query(
+    'UPDATE termini SET trainer_id = $1, scheduled_at = $2 WHERE id = $3 RETURNING *',
+    [trainerId, scheduledAt, id]
+  );
+  return rows[0];
+}
+
 module.exports = {
   pool,
   query,
@@ -207,4 +215,5 @@ module.exports = {
   getAppointmentsForUser,
   getAllAppointments,
   deleteAppointment,
+  updateAppointment,
 };

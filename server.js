@@ -176,6 +176,36 @@ app.post("/api/appointments", authRequired, async (req, res) => {
   }
 });
 
+app.put("/api/appointments/:id", authRequired, async (req, res) => {
+  try {
+    const id = req.params.id;
+    const { trainerId, scheduledAt } = req.body;
+    if (!trainerId || !scheduledAt)
+      return res.status(400).json({ error: "Missing fields" });
+
+    // Ensure user owns the appointment (or is admin)
+    const { rows } = await db.query("SELECT user_id FROM termini WHERE id = $1", [id]);
+    if (!rows.length) return res.status(404).json({ error: "Not found" });
+    const ownerId = rows[0].user_id;
+    if (req.user.id !== ownerId && !req.user.is_admin)
+      return res.status(403).json({ error: "Forbidden" });
+
+    const updated = await db.updateAppointment(id, trainerId, scheduledAt);
+
+    // Return joined appointment with trainer info for client convenience
+    const { rows: joined } = await db.query(
+      `SELECT a.id, a.scheduled_at, a.trainer_id, t.name AS trainer_name, t.surname AS trainer_surname
+       FROM termini a JOIN treneri t ON t.id = a.trainer_id WHERE a.id = $1`,
+      [id]
+    );
+
+    res.json(joined[0] || updated);
+  } catch (err) {
+    console.error("PUT /api/appointments/:id failed:", err);
+    res.status(500).json({ error: err.message || "Failed to update appointment" });
+  }
+});
+
 app.delete("/api/appointments/:id", authRequired, async (req, res) => {
   try {
     const id = req.params.id;
