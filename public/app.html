@@ -630,6 +630,7 @@
           <!--Button za rezervaciju termina-->
           <div class="book-final" id="bookFinal" style="display: none">
             <button id="bookBtn" disabled>Rezerviraj termin</button>
+            <button id="cancelEditBtn" class="cancel-btn" style="display: none; margin-left:8px;" onclick="cancelEdit()">Odustani</button>
             <div class="error" id="bookErr"></div>
             <div class="success" id="bookSuccess"></div>
           </div>
@@ -1060,9 +1061,15 @@
         function updateBookButton() {
           const btn = document.getElementById("bookBtn");
           const container = document.getElementById("bookFinal");
+          const cancelBtn = document.getElementById("cancelEditBtn");
 
           // Update label depending on edit mode
           btn.textContent = editingAppointmentId ? "Spremi promjene" : "Rezerviraj termin";
+
+          // show/hide cancel button when in edit mode
+          if (cancelBtn) {
+            cancelBtn.style.display = editingAppointmentId ? "inline-block" : "none";
+          }
 
           if (!selectedTrainer || !selectedDate || !selectedTime) {
             btn.disabled = true;
@@ -1136,6 +1143,23 @@
         }
         // Ensure function is available for inline onclick handlers
         window.startEditAppointment = startEditAppointment;
+
+                function cancelEdit() {
+                  // exit edit mode and reset selection so user can make a new reservation
+                  editingAppointmentId = null;
+                  selectedTrainer = null;
+                  selectedDate = null;
+                  selectedTime = null;
+
+                  // clear UI selections
+                  document.querySelectorAll('.trainer-card').forEach(c => c.classList.remove('selected'));
+                  document.getElementById('calendarContainer').style.display = 'none';
+                  document.getElementById('timeSlots').style.display = 'none';
+
+                  updateTimeSlots();
+                  updateBookButton();
+                }
+                window.cancelEdit = cancelEdit;
 
         async function loadAppointments() {
           try {
@@ -1342,8 +1366,9 @@
                 }, 2000);
 
                 editingAppointmentId = null;
-                // restore button label
+                // restore button label and update cancel visibility
                 document.getElementById('bookBtn').textContent = 'Rezerviraj termin';
+                updateBookButton();
               } else {
                 // Pošalji zahtjev za novi termin
                 const newAppt = await post("/api/appointments", {
