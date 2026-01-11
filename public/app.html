@@ -876,10 +876,13 @@
           });
         }
         // Funkcija za odabir trenera
-        function selectTrainer(trainerId, el) {
+        // preserveSelection: if true, do not clear selectedDate/selectedTime or hide booking UI
+        function selectTrainer(trainerId, el, preserveSelection = false) {
           selectedTrainer = trainerId;
-          selectedDate = null;
-          selectedTime = null;
+          if (!preserveSelection) {
+            selectedDate = null;
+            selectedTime = null;
+          }
 
           // Update UI
           document
@@ -891,8 +894,10 @@
           currentMonth = new Date();
           renderCalendar();
 
-          document.getElementById("timeSlots").style.display = "none";
-          document.getElementById("bookFinal").style.display = "none";
+          if (!preserveSelection) {
+            document.getElementById("timeSlots").style.display = "none";
+            document.getElementById("bookFinal").style.display = "none";
+          }
         }
         //funkcija za kalendar i odabir datuma
         function renderCalendar() {
@@ -1099,7 +1104,7 @@
           // Set selected trainer and highlight card
           selectedTrainer = appt.trainer_id;
           const card = document.querySelector(`[data-trainer-id='${selectedTrainer}']`);
-          selectTrainer(selectedTrainer, card);
+          selectTrainer(selectedTrainer, card, true);
 
           // Set date and time
           const dt = new Date(appt.scheduled_at);
