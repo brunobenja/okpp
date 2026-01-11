@@ -34,34 +34,6 @@
         .main-content {
           grid-template-columns: 1fr;
         }
-        function startEditAppointment(id) {
-          const appt = allUserAppointments.find((a) => String(a.id) === String(id));
-          if (!appt) return alert('Termin nije pronađen');
-
-          editingAppointmentId = appt.id;
-
-          // Set selected trainer and highlight card
-          selectedTrainer = appt.trainer_id;
-          const card = document.querySelector(`[data-trainer-id='${selectedTrainer}']`);
-          selectTrainer(selectedTrainer, card);
-
-          // Set date and time
-          const dt = new Date(appt.scheduled_at);
-          const year = dt.getFullYear();
-          const month = String(dt.getMonth() + 1).padStart(2, '0');
-          const day = String(dt.getDate()).padStart(2, '0');
-          selectedDate = `${year}-${month}-${day}`;
-          selectedTime = dt.toTimeString().slice(0,5);
-
-          // Ensure calendar shows the month and selected day
-          currentMonth = new Date(year, dt.getMonth(), 1);
-          renderCalendar();
-          updateTimeSlots();
-          updateBookButton();
-
-          // Scroll into view the booking area
-          document.getElementById('bookFinal')?.scrollIntoView({ behavior: 'smooth' });
-        }
       }
 
       .header {
@@ -1116,6 +1088,35 @@
           return d.toLocaleString("hr-HR");
         }
 
+        function startEditAppointment(id) {
+          const appt = allUserAppointments.find((a) => String(a.id) === String(id));
+          if (!appt) return alert('Termin nije pronađen');
+
+          editingAppointmentId = appt.id;
+
+          // Set selected trainer and highlight card
+          selectedTrainer = appt.trainer_id;
+          const card = document.querySelector(`[data-trainer-id='${selectedTrainer}']`);
+          selectTrainer(selectedTrainer, card);
+
+          // Set date and time
+          const dt = new Date(appt.scheduled_at);
+          const year = dt.getFullYear();
+          const month = String(dt.getMonth() + 1).padStart(2, '0');
+          const day = String(dt.getDate()).padStart(2, '0');
+          selectedDate = `${year}-${month}-${day}`;
+          selectedTime = dt.toTimeString().slice(0,5);
+
+          // Ensure calendar shows the month and selected day
+          currentMonth = new Date(year, dt.getMonth(), 1);
+          renderCalendar();
+          updateTimeSlots();
+          updateBookButton();
+
+          // Scroll into view the booking area
+          document.getElementById('bookFinal')?.scrollIntoView({ behavior: 'smooth' });
+        }
+
         async function loadAppointments() {
           try {
             console.log("Fetching appointments...");
@@ -1269,58 +1270,37 @@
           updateBookButton();
         });
         //rezervacija termina
-        document.getElementById("bookBtn").addEventListener("click", async () => {
-          const err = document.getElementById("bookErr");
-          const success = document.getElementById("bookSuccess");
-          err.textContent = "";
-          success.textContent = "";
+        document
+          .getElementById("bookBtn")
+          .addEventListener("click", async () => {
+            const err = document.getElementById("bookErr");
+            const success = document.getElementById("bookSuccess");
+            err.textContent = "";
+            success.textContent = "";
 
-          try {
-            if (!selectedTrainer || !selectedDate || !selectedTime) {
-              throw new Error("Molimo odaberite trenera, datum i vrijeme");
-            }
+            try {
+              if (!selectedTrainer || !selectedDate || !selectedTime) {
+                throw new Error("Molimo odaberite trenera, datum i vrijeme");
+              }
 
-            // Provjera konflikata u array-u (ignore the appointment being edited)
-            const conflictExists = allUserAppointments.some((a) => {
-              if (editingAppointmentId && String(a.id) === String(editingAppointmentId)) return false;
-              const appt = new Date(a.scheduled_at);
-              const dateStr = appt.toISOString().split("T")[0];
-              const timeStr = appt.toTimeString().slice(0, 5);
-              return dateStr === selectedDate && timeStr === selectedTime;
-            });
-
-            if (conflictExists) {
-              throw new Error("Već imate termin u odabrano vrijeme i datum");
-            }
-
-            // Konvertiraj u ISO format
-            const iso = new Date(`${selectedDate}T${selectedTime}:00`).toISOString();
-
-            if (editingAppointmentId) {
-              // Update existing appointment
-              const updated = await put(`/api/appointments/${editingAppointmentId}`, {
-                trainerId: selectedTrainer,
-                scheduledAt: iso,
+              // Provjera konflikata u array-u
+              const conflictExists = allUserAppointments.some((a) => {
+                const appt = new Date(a.scheduled_at);
+                const dateStr = appt.toISOString().split("T")[0];
+                const timeStr = appt.toTimeString().slice(0, 5);
+                return dateStr === selectedDate && timeStr === selectedTime;
               });
 
-              // Update local arrays
-              const idxUser = allUserAppointments.findIndex((a) => String(a.id) === String(editingAppointmentId));
-              if (idxUser > -1) allUserAppointments[idxUser] = updated;
-              const idxAll = allAppointments.findIndex((a) => String(a.id) === String(editingAppointmentId));
-              if (idxAll > -1) allAppointments[idxAll] = updated;
+              if (conflictExists) {
+                throw new Error("Već imate termin u odabrano vrijeme i datum");
+              }
 
-              renderFilteredUserAppointments();
-              updateTimeSlots();
-              updateBookButton();
+              // Konvertiraj u ISO format
+              const iso = new Date(
+                `${selectedDate}T${selectedTime}:00`
+              ).toISOString();
 
-              success.textContent = "Termin je uspješno ažuriran!";
-              setTimeout(() => {
-                success.textContent = "";
-              }, 2000);
-
-              editingAppointmentId = null;
-            } else {
-              // Create new appointment
+              // Pošalji zahtjev
               const newAppt = await post("/api/appointments", {
                 trainerId: selectedTrainer,
                 scheduledAt: iso,
@@ -1338,11 +1318,10 @@
               setTimeout(() => {
                 success.textContent = "";
               }, 2000);
+            } catch (e) {
+              err.textContent = e.message;
             }
-          } catch (e) {
-            err.textContent = e.message;
-          }
-        });
+          });
         //odjava korisnika
         document
           .getElementById("logoutBtn")
