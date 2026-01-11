@@ -649,18 +649,17 @@ function renderFilteredAdminAppointments() {
   }
 
   const rows = list
-    .map(
-      (a) => `
-    <tr>
-      <td>${fmt(a.scheduled_at)}</td>
-      <td>${a.user_name} ${a.user_surname} (${a.user_email})</td>
-      <td>${a.trainer_name} ${a.trainer_surname}</td>
-      <td><button class="del-btn" onclick="showDeleteConfirm(${
-        a.id
-      }, 'admin')">Obriši</button></td>
-    </tr>
-  `
-    )
+    .map((a) => {
+      return;
+      `<tr>
+                <td>${fmt(a.scheduled_at)}</td>
+                <td>${a.user_name} ${a.user_surname} (${a.user_email})</td>
+                <td>${a.trainer_name} ${a.trainer_surname}</td>
+                <td><button class="del-btn" onclick="showDeleteConfirm(${
+                  a.id
+                }, 'admin')">Obriši</button></td>
+              </tr>`;
+    })
     .join("");
   wrap.innerHTML = `<table><thead><tr><th>Vrijeme</th><th>Korisnik</th><th>Trener</th><th>Radnja</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
