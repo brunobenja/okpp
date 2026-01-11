@@ -146,59 +146,87 @@ async function loadAllAppointmentsForFiltering() {
 }
 // Funkcija za učitavanje trenera
 async function loadTrainers() {
+  // Dohvati sve trenere s API-ja
   const trainers = await get("/api/trainers");
-  const grid = document.getElementById("trainerGrid");
-  grid.innerHTML = "";
 
-  trainers.forEach((t) => {
-    const card = document.createElement("div");
-    card.className = "trainer-card";
-    card.dataset.trainerId = t.id;
-    card.onclick = () => selectTrainer(t.id, card);
+  // Filtriraj po tipovima
+  const personalTrainers = trainers.filter((t) => t.type === "personal");
+  const groupTrainers = trainers.filter((t) => t.type === "group");
+  const rehabTrainers = trainers.filter((t) => t.type === "rehabilitation");
 
-    const avatar = document.createElement("div");
-    avatar.className = "trainer-avatar";
+  // Funkcija za render grid-a
+  function renderGrid(trainersArray, gridId) {
+    const grid = document.getElementById(gridId);
+    grid.innerHTML = ""; // očisti postojeće
 
-    if (t.profile_pic) {
-      const img = document.createElement("img");
-      img.src = t.profile_pic;
-      img.alt = `${t.name} ${t.surname}`;
-      img.style.width = "100%";
-      img.style.height = "100%";
-      img.style.borderRadius = "50%";
-      img.style.objectFit = "cover";
-      avatar.appendChild(img);
-    } else {
-      const initials = `${(t.name || "").charAt(0)}${(t.surname || "").charAt(
-        0
-      )}`.toUpperCase();
-      avatar.textContent = initials || "TR";
-    }
+    trainersArray.forEach((t) => {
+      const card = document.createElement("div");
+      card.className = "trainer-card";
+      card.dataset.trainerId = t.id;
+      card.onclick = () => selectTrainer(t.id, card);
 
-    const name = document.createElement("div");
-    name.className = "trainer-name";
-    name.textContent = `${t.name} ${t.surname}`;
+      const avatar = document.createElement("div");
+      avatar.className = "trainer-avatar";
 
-    card.appendChild(avatar);
-    card.appendChild(name);
-    grid.appendChild(card);
-  });
+      if (t.profile_pic) {
+        const img = document.createElement("img");
+        img.src = t.profile_pic;
+        img.alt = `${t.name} ${t.surname}`;
+        img.style.width = "100%";
+        img.style.height = "100%";
+        img.style.borderRadius = "50%";
+        img.style.objectFit = "cover";
+        avatar.appendChild(img);
+      } else {
+        const initials = `${(t.name || "").charAt(0)}${(t.surname || "").charAt(
+          0
+        )}`.toUpperCase();
+        avatar.textContent = initials || "TR";
+      }
+
+      const name = document.createElement("div");
+      name.className = "trainer-name";
+      name.textContent = `${t.name} ${t.surname}`;
+
+      card.appendChild(avatar);
+      card.appendChild(name);
+      grid.appendChild(card);
+    });
+  }
+
+  // Render svakog tipa u zasebne gridove
+  renderGrid(personalTrainers, "personal-trainers");
+  renderGrid(groupTrainers, "group-trainers");
+  renderGrid(rehabTrainers, "rehab-trainers");
 }
+
 // Funkcija za odabir trenera
 // preserveSelection: if true, do not clear selectedDate/selectedTime or hide booking UI
+
+
 function selectTrainer(trainerId, el, preserveSelection = false) {
-  selectedTrainer = trainerId;
+  // Ako je kliknuti trener već odabran, odznači ga
+  if (selectedTrainer === trainerId) {
+    selectedTrainer = null;
+    if (el) el.classList.remove("selected");
+  } else {
+    selectedTrainer = trainerId;
+
+    // Ukloni "selected" sa svih kartica (sve kategorije)
+    document.querySelectorAll(".trainer-card").forEach((card) => {
+      card.classList.remove("selected");
+    });
+
+    // Označi kliknutog trenera
+    if (el) el.classList.add("selected");
+  }
+
   if (!preserveSelection) {
     selectedDate = null;
     selectedTime = null;
   }
 
-  // Update UI
-  document
-    .querySelectorAll(".trainer-card")
-    .forEach((card) => card.classList.remove("selected"));
-  if (el && el.classList) el.classList.add("selected");
-
+  // Prikaži kalendar i resetiraj time slotove
   document.getElementById("calendarContainer").style.display = "block";
   currentMonth = new Date();
   renderCalendar();
@@ -207,7 +235,10 @@ function selectTrainer(trainerId, el, preserveSelection = false) {
     document.getElementById("timeSlots").style.display = "none";
     document.getElementById("bookFinal").style.display = "none";
   }
+
+  console.log("Odabrani trener:", selectedTrainer);
 }
+
 //funkcija za kalendar i odabir datuma
 function renderCalendar() {
   const grid = document.getElementById("calendarGrid");
@@ -618,17 +649,18 @@ function renderFilteredAdminAppointments() {
   }
 
   const rows = list
-    .map((a) => {
-      return;
-      `<tr>
-                <td>${fmt(a.scheduled_at)}</td>
-                <td>${a.user_name} ${a.user_surname} (${a.user_email})</td>
-                <td>${a.trainer_name} ${a.trainer_surname}</td>
-                <td><button class="del-btn" onclick="showDeleteConfirm(${
-                  a.id
-                }, 'admin')">Obriši</button></td>
-              </tr>`;
-    })
+    .map(
+      (a) => `
+    <tr>
+      <td>${fmt(a.scheduled_at)}</td>
+      <td>${a.user_name} ${a.user_surname} (${a.user_email})</td>
+      <td>${a.trainer_name} ${a.trainer_surname}</td>
+      <td><button class="del-btn" onclick="showDeleteConfirm(${
+        a.id
+      }, 'admin')">Obriši</button></td>
+    </tr>
+  `
+    )
     .join("");
   wrap.innerHTML = `<table><thead><tr><th>Vrijeme</th><th>Korisnik</th><th>Trener</th><th>Radnja</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
