@@ -195,9 +195,9 @@ async function loadTrainers() {
   }
 
   // Render svakog tipa u zasebne gridove
-  renderGrid(personalTrainers, "personal-trainers");
-  renderGrid(groupTrainers, "group-trainers");
-  renderGrid(rehabTrainers, "rehab-trainers");
+  renderGrid(personalTrainers, "personal");
+  renderGrid(groupTrainers, "group");
+  renderGrid(rehabTrainers, "rehab");
 }
 
 // Funkcija za odabir trenera
