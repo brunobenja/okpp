@@ -2,12 +2,34 @@ require('dotenv').config();
 const bcrypt = require('bcryptjs');
 const db = require('./index');
 
+/*
 const userPasswords = [
-  { email: 'ivan.horvat@mail.com', password: 'lozinka123', name: 'Ivan', surname: 'Horvat' },
-  { email: 'ana.kovac@mail.com', password: 'lozinka456', name: 'Ana', surname: 'Kovač' },
-  { email: 'marko.novak@mail.com', password: 'lozinka789', name: 'Marko', surname: 'Novak' }
+  {
+    email: "user@mail.com",
+    password: "user",
+    name: "user",
+    surname: "user",
+  },
+  {
+    email: "ivan.horvat@mail.com",
+    password: "lozinka123",
+    name: "Ivan",
+    surname: "Horvat",
+  },
+  {
+    email: "ana.kovac@mail.com",
+    password: "lozinka456",
+    name: "Ana",
+    surname: "Kovač",
+  },
+  {
+    email: "marko.novak@mail.com",
+    password: "lozinka789",
+    name: "Marko",
+    surname: "Novak",
+  },
 ];
-
+*/
 const trainerData = [
   { name: 'Petar', surname: 'Babić', sex: 'M', age: 28, yearsExp: 5, pic: 'https://i.pravatar.cc/150?img=12' },
   { name: 'Marija', surname: 'Jurić', sex: 'F', age: 32, yearsExp: 8, pic: 'https://i.pravatar.cc/150?img=47' },
