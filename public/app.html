@@ -1117,8 +1117,14 @@
 
           // Set selected trainer and highlight card
           selectedTrainer = appt.trainer_id;
-          const card = document.querySelector(`[data-trainer-id='${selectedTrainer}']`);
-          selectTrainer(selectedTrainer, card, true);
+          // try attribute selector first, then fallback to dataset comparison
+          let card = document.querySelector(`[data-trainer-id='${selectedTrainer}']`);
+          if (!card) {
+            const cards = Array.from(document.querySelectorAll('.trainer-card'));
+            card = cards.find((c) => String(c.dataset.trainerId) === String(selectedTrainer));
+          }
+          // If still not found, just call selectTrainer without element to ensure UI shows
+          selectTrainer(selectedTrainer, card || null, true);
 
           // Set date and time
           const dt = new Date(appt.scheduled_at);
