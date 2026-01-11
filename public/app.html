@@ -1216,9 +1216,13 @@
           }
           const rows = list
             .map((a) => {
+              const d = new Date(a.scheduled_at);
+              const dateOnly = d.toLocaleDateString("hr-HR");
+              const timeOnly = d.toTimeString().slice(0, 5);
               return `
               <tr>
-                <td>${fmt(a.scheduled_at)}</td>
+                <td>${dateOnly}</td>
+                <td>${timeOnly}</td>
                 <td>${a.trainer_name} ${a.trainer_surname}</td>
                 <td>
                   <button class="edit-btn" onclick="startEditAppointment(${a.id})">Uredi</button>
@@ -1227,7 +1231,7 @@
               </tr>`;
             })
             .join("");
-          wrap.innerHTML = `<table><thead><tr><th>Vrijeme</th><th>Trener</th><th>Radnja</th></tr></thead><tbody>${rows}</tbody></table>`;
+          wrap.innerHTML = `<table><thead><tr><th>Datum</th><th>Vrijeme</th><th>Trener</th><th>Radnja</th></tr></thead><tbody>${rows}</tbody></table>`;
         }
         //funkcije za admin panel
         async function loadAdminAppointments() {
