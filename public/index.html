@@ -1,10 +1,10 @@
-<!doctype html>
+<!DOCTYPE html>
 <html>
   <head>
     <meta charset="utf-8" />
     <title>GymTime - Prijava / Registracija</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel="stylesheet" href="login_style.css">
+    <link rel="stylesheet" href="login_style.css" />
   </head>
   <body>
     <div class="container">
@@ -12,74 +12,35 @@
         <h1>GymTime</h1>
         <p>VAŠ FITNESS PUT</p>
       </div>
-    <div class="card" id="registerCard" hidden>
-      <h3>Registracija</h3>
-      <div class="row">
-        <div>
-          <label>Ime<input id="regName" /></label>
+      <div class="card" id="registerCard" hidden>
+        <h3>Registracija</h3>
+        <div class="row">
+          <div>
+            <label>Ime<input id="regName" /></label>
+          </div>
+          <div>
+            <label>Prezime<input id="regSurname" /></label>
+          </div>
         </div>
-        <div>
-          <label>Prezime<input id="regSurname" /></label>
+        <label>E-pošta<input id="regEmail" type="email" /></label>
+        <label>Lozinka<input id="regPassword" type="password" /></label>
+        <button id="registerBtn">Kreiraj račun</button>
+        <div class="error" id="regErr"></div>
+        <div class="switch">Imate račun? <a id="toLogin">Prijava</a></div>
+      </div>
+
+      <div class="card" id="loginCard">
+        <h3>Prijava</h3>
+        <label>E-pošta<input id="logEmail" type="email" /></label>
+        <label>Lozinka<input id="logPassword" type="password" /></label>
+        <button id="loginBtn">Prijava</button>
+        <div class="error" id="logErr"></div>
+        <div class="switch">
+          Nemate račun? <a id="toRegister">Registracija</a>
         </div>
       </div>
-      <label>E-pošta<input id="regEmail" type="email" /></label>
-      <label>Lozinka<input id="regPassword" type="password" /></label>
-      <button id="registerBtn">Kreiraj račun</button>
-      <div class="error" id="regErr"></div>
-      <div class="switch">Imate račun? <a id="toLogin">Prijava</a></div>
     </div>
 
-    <div class="card" id="loginCard">
-      <h3>Prijava</h3>
-      <label>E-pošta<input id="logEmail" type="email" /></label>
-      <label>Lozinka<input id="logPassword" type="password" /></label>
-      <button id="loginBtn">Prijava</button>
-      <div class="error" id="logErr"></div>
-      <div class="switch">Nemate račun? <a id="toRegister">Registracija</a></div>
-    </div>
-
-    </div>
-    
-    <script>
-      const regCard = document.getElementById('registerCard');
-      const logCard = document.getElementById('loginCard');
-      document.getElementById('toRegister').onclick = () => { logCard.hidden = true; regCard.hidden = false; };
-      document.getElementById('toLogin').onclick = () => { regCard.hidden = true; logCard.hidden = false; };
-
-      async function post(path, body) {
-        const res = await fetch(path, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
-        });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.error || 'Request failed');
-        return data;
-      }
-
-      document.getElementById('registerBtn').onclick = async () => {
-        const err = document.getElementById('regErr');
-        err.textContent = '';
-        try {
-          const name = document.getElementById('regName').value.trim();
-          const surname = document.getElementById('regSurname').value.trim();
-          const email = document.getElementById('regEmail').value.trim();
-          const password = document.getElementById('regPassword').value;
-          await post('/api/register', { name, surname, email, password });
-          location.href = '/app.html';
-        } catch (e) { err.textContent = e.message; }
-      };
-
-      document.getElementById('loginBtn').onclick = async () => {
-        const err = document.getElementById('logErr');
-        err.textContent = '';
-        try {
-          const email = document.getElementById('logEmail').value.trim();
-          const password = document.getElementById('logPassword').value;
-          await post('/api/login', { email, password });
-          location.href = '/app.html';
-        } catch (e) { err.textContent = e.message; }
-      };
-    </script>
+    <script src="index_script.js"></script>
   </body>
 </html>
