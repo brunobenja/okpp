@@ -1036,13 +1036,42 @@
 
             const isTrainerBlocked = bookedTimes.has(time);
             const isUserBlocked = userBookedTimes.has(time);
-            btn.disabled = isTrainerBlocked || isUserBlocked;
 
-            btn.title = isUserBlocked
-              ? "Već imate termin u ovom vremenu"
-              : isTrainerBlocked
-              ? "Trener je zauzet u ovom terminu"
-              : "";
+            // Check for past times and 24h rule
+            const candidate = new Date(`${selectedDate}T${time}:00`);
+            const now = new Date();
+            const ms24 = 24 * 60 * 60 * 1000;
+            let inPast = candidate <= now;
+            let lessThan24 = candidate - now < ms24;
+
+            // If editing and this slot equals the original appointment, allow it
+            if (editingAppointmentId) {
+              const editingAppt = (allUserAppointments || []).find((a) => String(a.id) === String(editingAppointmentId)) ||
+                (allAppointments || []).find((a) => String(a.id) === String(editingAppointmentId));
+              if (editingAppt) {
+                const editDt = new Date(editingAppt.scheduled_at);
+                if (editDt.toISOString() === candidate.toISOString()) {
+                  inPast = false;
+                  lessThan24 = false;
+                }
+              }
+            }
+
+            // Determine disabled state
+            btn.disabled = isTrainerBlocked || isUserBlocked || inPast || lessThan24;
+
+            // Title priority: user conflict > trainer conflict > past > <24h
+            if (isUserBlocked) {
+              btn.title = "Već imate termin u ovom vremenu";
+            } else if (isTrainerBlocked) {
+              btn.title = "Trener je zauzet u ovom terminu";
+            } else if (inPast) {
+              btn.title = "Ne možete rezervirati termin u prošlosti";
+            } else if (lessThan24) {
+              btn.title = "Rezervacije i izmjene moraju biti najmanje 24 sata unaprijed";
+            } else {
+              btn.title = "";
+            }
 
             if (selectedTime === time) btn.classList.add("selected");
             if (!btn.disabled) btn.onclick = () => selectTime(time);
