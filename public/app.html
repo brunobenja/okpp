@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <title>GymTime - Rezervacija termina</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css" />
   </head>
   <body>
     <div class="container">
@@ -29,8 +29,15 @@
         <div class="card" id="bookingPanel">
           <h3>Novi termin</h3>
           <label>Odaberite trenera</label>
-          <div class="trainer-grid" id="trainerGrid"></div>
-          -->
+          <h4>Osobni treneri</h4>
+          <div class="trainer-grid" id="personal-trainers"></div>
+
+          <h4>Grupni treneri</h4>
+          <div class="trainer-grid" id="group-trainers"></div>
+
+          <h4>Rehabilitacijski treneri</h4>
+          <div class="trainer-grid" id="rehab-trainers"></div>
+
           <select id="trainerSelect" style="display: none">
             <option value="">-- Odaberite trenera --</option>
           </select>
@@ -56,7 +63,14 @@
           <!--Button za rezervaciju termina-->
           <div class="book-final" id="bookFinal" style="display: none">
             <button id="bookBtn" disabled>Rezerviraj termin</button>
-            <button id="cancelEditBtn" class="cancel-btn" style="display: none; margin-left:8px;" onclick="cancelEdit()">Odustani</button>
+            <button
+              id="cancelEditBtn"
+              class="cancel-btn"
+              style="display: none; margin-left: 8px"
+              onclick="cancelEdit()"
+            >
+              Odustani
+            </button>
             <div class="error" id="bookErr"></div>
             <div class="success" id="bookSuccess"></div>
           </div>
