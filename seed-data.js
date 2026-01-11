@@ -38,6 +38,7 @@ const trainerData = [
     sex: "F",
     age: 32,
     yearsExp: 8,
+    type: "group",
     pic: "https://i.pravatar.cc/150?img=47",
   },
   /*Z Grupna trenerica*/
@@ -47,6 +48,7 @@ const trainerData = [
     sex: "F",
     age: 27,
     yearsExp: 4,
+
     pic: "https://i.pravatar.cc/150?img=48",
   },
   /*M osobni trener*/
@@ -84,7 +86,7 @@ async function getUserById(id) {
 
 async function getTrainers() {
   const { rows } = await query(
-    "SELECT id, name, surname, pic AS profile_pic FROM treneri"
+    "SELECT id, name, surname, type, pic AS profile_pic FROM treneri"
   );
   return rows;
 }

@@ -1,21 +1,27 @@
-require('dotenv').config();
-const { Pool } = require('pg');
-const bcrypt = require('bcryptjs'); // add this
+require("dotenv").config();
+const { Pool } = require("pg");
+const bcrypt = require("bcryptjs"); // add this
 
 const useConnStr = !!process.env.DATABASE_URL;
 const pool = new Pool(
   useConnStr
     ? {
         connectionString: process.env.DATABASE_URL,
-        ssl: process.env.PGSSL === 'require' ? { rejectUnauthorized: false } : false,
+        ssl:
+          process.env.PGSSL === "require"
+            ? { rejectUnauthorized: false }
+            : false,
       }
     : {
-        host: process.env.PGHOST || 'localhost',
+        host: process.env.PGHOST || "localhost",
         port: Number(process.env.PGPORT || 5432),
-        user: process.env.PGUSER || 'postgres',
-        password: process.env.PGPASSWORD || '',
-        database: process.env.PGDATABASE || 'postgres',
-        ssl: process.env.PGSSL === 'require' ? { rejectUnauthorized: false } : false,
+        user: process.env.PGUSER || "postgres",
+        password: process.env.PGPASSWORD || "",
+        database: process.env.PGDATABASE || "postgres",
+        ssl:
+          process.env.PGSSL === "require"
+            ? { rejectUnauthorized: false }
+            : false,
       }
 );
 
@@ -24,7 +30,9 @@ async function query(text, params) {
   const start = Date.now();
   const res = await pool.query(text, params);
   const duration = Date.now() - start;
-  console.log(`query: ${text} | params: ${JSON.stringify(params)} | ${duration}ms`);
+  console.log(
+    `query: ${text} | params: ${JSON.stringify(params)} | ${duration}ms`
+  );
   return res;
 }
 
@@ -58,14 +66,20 @@ async function init() {
       profile_pic TEXT,
       years_experience INT CHECK (years_experience >= 0),
       user_id INT UNIQUE REFERENCES korisnici(id) ON DELETE SET NULL,
+      type TEXT NOT NULL DEFAULT 'personal',
       created_at TIMESTAMPTZ DEFAULT now()
     )
   `);
-  
+
   // Add columns if they don't exist (for existing databases)
   await query(`ALTER TABLE treneri ADD COLUMN IF NOT EXISTS profile_pic TEXT`);
-  await query(`ALTER TABLE treneri ADD COLUMN IF NOT EXISTS years_experience INT`);
-  await query(`ALTER TABLE treneri ADD COLUMN IF NOT EXISTS user_id INT UNIQUE REFERENCES korisnici(id) ON DELETE SET NULL`);
+  await query(`ALTER TABLE treneri ADD COLUMN IF NOT EXISTS type TEXT`);
+  await query(
+    `ALTER TABLE treneri ADD COLUMN IF NOT EXISTS years_experience INT`
+  );
+  await query(
+    `ALTER TABLE treneri ADD COLUMN IF NOT EXISTS user_id INT UNIQUE REFERENCES korisnici(id) ON DELETE SET NULL`
+  );
 
   await query(`
     CREATE TABLE IF NOT EXISTS termini (
@@ -85,10 +99,10 @@ async function init() {
 async function seedAdmin() {
   const email = process.env.ADMIN_EMAIL;
   const password = process.env.ADMIN_PASSWORD;
-  const name = process.env.ADMIN_NAME || 'Admin';
-  const surname = process.env.ADMIN_SURNAME || '';
+  const name = process.env.ADMIN_NAME || "Admin";
+  const surname = process.env.ADMIN_SURNAME || "";
   if (!email || !password) {
-    console.log('No ADMIN_EMAIL/ADMIN_PASSWORD provided; skipping admin seed');
+    console.log("No ADMIN_EMAIL/ADMIN_PASSWORD provided; skipping admin seed");
     return;
   }
   const hash = await bcrypt.hash(password, 10);
@@ -108,7 +122,7 @@ async function seedAdmin() {
 // Minimal helpers
 async function createUser(name, surname, email, password, isAdmin = false) {
   const { rows } = await query(
-    'INSERT INTO korisnici (name, surname, email, password, is_admin) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+    "INSERT INTO korisnici (name, surname, email, password, is_admin) VALUES ($1, $2, $3, $4, $5) RETURNING *",
     [name, surname, email, password, isAdmin]
   );
   return rows[0];
@@ -138,27 +152,32 @@ async function getUserById(id) {
   };
 }
 
-
-
-
-
-async function createTrainer(name, surname, sex, age, profilePic = null, yearsExperience = null, userId = null) {
+async function createTrainer(
+  name,
+  surname,
+  sex,
+  age,
+  profilePic = null,
+  yearsExperience = null,
+  userId = null,
+  type = "personal"
+) {
   const { rows } = await query(
-    'INSERT INTO treneri (name, surname, sex, age, profile_pic, years_experience, user_id) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
-    [name, surname, sex, age, profilePic, yearsExperience, userId]
+    "INSERT INTO treneri (name, surname, sex, age, profile_pic, years_experience, user_id,type) VALUES ($1, $2, $3, $4, $5, $6, $7,$8) RETURNING *",
+    [name, surname, sex, age, profilePic, yearsExperience, userId, type]
   );
   return rows[0];
 }
 async function getTrainers() {
   const { rows } = await query(
-    "SELECT id, name, surname, sex, age, years_experience, profile_pic FROM treneri"
+    "SELECT id, name, surname, sex, age, years_experience, profile_pic, type FROM treneri"
   );
-  return rows; // must return array
+  return rows;
 }
 
 async function bookAppointment(userId, trainerId, scheduledAt) {
   const { rows } = await query(
-    'INSERT INTO termini (user_id, trainer_id, scheduled_at) VALUES ($1, $2, $3) RETURNING *',
+    "INSERT INTO termini (user_id, trainer_id, scheduled_at) VALUES ($1, $2, $3) RETURNING *",
     [userId, trainerId, scheduledAt]
   );
   return rows[0];
@@ -190,12 +209,12 @@ async function getAllAppointments() {
 }
 
 async function deleteAppointment(id) {
-  await query('DELETE FROM termini WHERE id = $1', [id]);
+  await query("DELETE FROM termini WHERE id = $1", [id]);
 }
 
 async function updateAppointment(id, trainerId, scheduledAt) {
   const { rows } = await query(
-    'UPDATE termini SET trainer_id = $1, scheduled_at = $2 WHERE id = $3 RETURNING *',
+    "UPDATE termini SET trainer_id = $1, scheduled_at = $2 WHERE id = $3 RETURNING *",
     [trainerId, scheduledAt, id]
   );
   return rows[0];
