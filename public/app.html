@@ -1002,6 +1002,8 @@
           // Blokirana vremena za trenera
           const bookedTimes = new Set();
           appointments.forEach((a) => {
+            // ignore the appointment currently being edited
+            if (editingAppointmentId && String(a.id) === String(editingAppointmentId)) return;
             if (String(a.trainer_id) === String(selectedTrainer)) {
               const apptDate = new Date(a.scheduled_at);
               const dateStr = apptDate.toISOString().split("T")[0];
@@ -1015,6 +1017,8 @@
           // Blokirana vremena za korisnika
           const userBookedTimes = new Set();
           userAppointments.forEach((a) => {
+            // ignore the appointment currently being edited
+            if (editingAppointmentId && String(a.id) === String(editingAppointmentId)) return;
             const apptDate = new Date(a.scheduled_at);
             const dateStr = apptDate.toISOString().split("T")[0];
             if (dateStr === selectedDate) {
@@ -1056,6 +1060,9 @@
         function updateBookButton() {
           const btn = document.getElementById("bookBtn");
           const container = document.getElementById("bookFinal");
+
+          // Update label depending on edit mode
+          btn.textContent = editingAppointmentId ? "Spremi promjene" : "Rezerviraj termin";
 
           if (!selectedTrainer || !selectedDate || !selectedTime) {
             btn.disabled = true;
@@ -1296,8 +1303,9 @@
                 throw new Error("Molimo odaberite trenera, datum i vrijeme");
               }
 
-              // Provjera konflikata u array-u
+              // Provjera konflikata u array-u (ignoriraj termin koji se uređuje)
               const conflictExists = allUserAppointments.some((a) => {
+                if (editingAppointmentId && String(a.id) === String(editingAppointmentId)) return false;
                 const appt = new Date(a.scheduled_at);
                 const dateStr = appt.toISOString().split("T")[0];
                 const timeStr = appt.toTimeString().slice(0, 5);
@@ -1309,28 +1317,53 @@
               }
 
               // Konvertiraj u ISO format
-              const iso = new Date(
-                `${selectedDate}T${selectedTime}:00`
-              ).toISOString();
+              const iso = new Date(`${selectedDate}T${selectedTime}:00`).toISOString();
 
-              // Pošalji zahtjev
-              const newAppt = await post("/api/appointments", {
-                trainerId: selectedTrainer,
-                scheduledAt: iso,
-              });
+              if (editingAppointmentId) {
+                // Update existing appointment
+                const updated = await put(`/api/appointments/${editingAppointmentId}`, {
+                  trainerId: selectedTrainer,
+                  scheduledAt: iso,
+                });
 
-              // Ažuriraj lokalne podatke
-              allUserAppointments.push(newAppt);
-              allAppointments.push(newAppt);
+                // Update local arrays
+                const idxUser = allUserAppointments.findIndex((a) => String(a.id) === String(editingAppointmentId));
+                if (idxUser > -1) allUserAppointments[idxUser] = updated;
+                const idxAll = allAppointments.findIndex((a) => String(a.id) === String(editingAppointmentId));
+                if (idxAll > -1) allAppointments[idxAll] = updated;
 
-              updateTimeSlots();
-              renderFilteredUserAppointments();
-              updateBookButton();
+                updateTimeSlots();
+                renderFilteredUserAppointments();
+                updateBookButton();
 
-              success.textContent = "Termin je uspješno rezerviran!";
-              setTimeout(() => {
-                success.textContent = "";
-              }, 2000);
+                success.textContent = "Termin je uspješno ažuriran!";
+                setTimeout(() => {
+                  success.textContent = "";
+                }, 2000);
+
+                editingAppointmentId = null;
+                // restore button label
+                document.getElementById('bookBtn').textContent = 'Rezerviraj termin';
+              } else {
+                // Pošalji zahtjev za novi termin
+                const newAppt = await post("/api/appointments", {
+                  trainerId: selectedTrainer,
+                  scheduledAt: iso,
+                });
+
+                // Ažuriraj lokalne podatke
+                allUserAppointments.push(newAppt);
+                allAppointments.push(newAppt);
+
+                updateTimeSlots();
+                renderFilteredUserAppointments();
+                updateBookButton();
+
+                success.textContent = "Termin je uspješno rezerviran!";
+                setTimeout(() => {
+                  success.textContent = "";
+                }, 2000);
+              }
             } catch (e) {
               err.textContent = e.message;
             }
