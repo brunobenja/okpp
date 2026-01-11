@@ -288,13 +288,13 @@ app.get("/seed", async (req, res) => {
     }
 
     // ---------- TRAINERS ----------
-    const trainers = [
-      ["Petar", "Babić", "M", 28, 5], /*M osobni trener*/
-      ["Marko", "Novak", "M", 30, 6], /*M grupni trener*/
-      ["Ana", "Kovač", "F", 25, 3],  /*Z osobna trenerica*/
-      ["Marija", "Jurić", "F", 32, 8],/*Z grupna trenerica*/
-      ["Luka", "Knežević", "M", 35, 10], /*M osobni trener*/
-    ];
+    /*const trainers = [
+      ["Petar", "Babić", "M", 28, 5] ,
+      ["Marko", "Novak", "M", 30, 6] ,
+      ["Luka", "Knežević", "M", 35, 10] ,
+      ["Ana", "Kovač", "F", 25, 3] ,
+      ["Marija", "Jurić", "F", 32, 8] ,
+    ];*/
 
     const existingTrainers = await db.getTrainers();
     if (existingTrainers.length === 0) {
