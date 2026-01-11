@@ -31,16 +31,51 @@ const userPasswords = [
 ];
 */
 const trainerData = [
-  { name: 'Petar', surname: 'Babić', sex: 'M', age: 28, yearsExp: 5, pic: 'https://i.pravatar.cc/150?img=12' },
-  { name: 'Marija', surname: 'Jurić', sex: 'F', age: 32, yearsExp: 8, pic: 'https://i.pravatar.cc/150?img=47' },
-  { name: 'Luka', surname: 'Knežević', sex: 'M', age: 35, yearsExp: 10, pic: 'https://i.pravatar.cc/150?img=13' },
-  { name: 'Ivana', surname: 'Marić', sex: 'F', age: 27, yearsExp: 4, pic: 'https://i.pravatar.cc/150?img=48' },
-  { name: 'Krešimir', surname: 'Perić', sex: 'M', age: 30, yearsExp: 7, pic: 'https://i.pravatar.cc/150?img=14' },
-  { name: 'Jelena', surname: 'Radić', sex: 'F', age: 29, yearsExp: 6, pic: 'https://i.pravatar.cc/150?img=49' },
-  { name: 'Tomislav', surname: 'Božić', sex: 'M', age: 33, yearsExp: 9, pic: 'https://i.pravatar.cc/150?img=15' },
-  { name: 'Sara', surname: 'Pavić', sex: 'F', age: 26, yearsExp: 3, pic: 'https://i.pravatar.cc/150?img=44' },
-  { name: 'Nikola', surname: 'Petrović', sex: 'M', age: 31, yearsExp: 8, pic: 'https://i.pravatar.cc/150?img=33' },
-  { name: 'Maja', surname: 'Vuković', sex: 'F', age: 28, yearsExp: 5, pic: 'https://i.pravatar.cc/150?img=45' }
+  /*Z trenerica*/
+  {
+    name: "Marija",
+    surname: "Jurić",
+    sex: "F",
+    age: 32,
+    yearsExp: 8,
+    pic: "https://i.pravatar.cc/150?img=47",
+  },
+  /*Z Grupna trenerica*/
+  {
+    name: "Ivana",
+    surname: "Marić",
+    sex: "F",
+    age: 27,
+    yearsExp: 4,
+    pic: "https://i.pravatar.cc/150?img=48",
+  },
+  /*M osobni trener*/
+  {
+    name: "Petar",
+    surname: "Babić",
+    sex: "M",
+    age: 28,
+    yearsExp: 5,
+    pic: "https://i.pravatar.cc/150?img=12",
+  },
+  /*M osobni trener*/
+  {
+    name: "Luka",
+    surname: "Knežević",
+    sex: "M",
+    age: 35,
+    yearsExp: 10,
+    pic: "https://i.pravatar.cc/150?img=13",
+  },
+  /*M osobni trener*/
+  {
+    name: "Krešimir",
+    surname: "Perić",
+    sex: "M",
+    age: 30,
+    yearsExp: 7,
+    pic: "https://i.pravatar.cc/150?img=14",
+  },
 ];
 async function getUserById(id) {
   const { rows } = await query("SELECT * FROM korisnici WHERE id=$1", [id]);

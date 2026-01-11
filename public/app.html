@@ -1089,6 +1089,8 @@
         }
 
         function startEditAppointment(id) {
+          console.log('startEditAppointment called with id:', id);
+          try {
           const appt = allUserAppointments.find((a) => String(a.id) === String(id));
           if (!appt) return alert('Termin nije pronađen');
 
@@ -1115,7 +1117,13 @@
 
           // Scroll into view the booking area
           document.getElementById('bookFinal')?.scrollIntoView({ behavior: 'smooth' });
+          } catch (e) {
+            console.error('startEditAppointment error', e);
+            alert('Greška prilikom pokretanja uređivanja. Vidi konzolu.');
+          }
         }
+        // Ensure function is available for inline onclick handlers
+        window.startEditAppointment = startEditAppointment;
 
         async function loadAppointments() {
           try {
