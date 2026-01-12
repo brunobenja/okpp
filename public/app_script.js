@@ -148,7 +148,7 @@ async function loadAllAppointmentsForFiltering() {
 async function loadTrainers() {
   const trainers = await get("/api/trainers");
 
-  const grid = document.getElementById("personal"); // koristimo jedan grid
+  const grid = document.getElementById("personal"); 
   grid.innerHTML = ""; // očisti postojeće
 
   trainers.forEach((t) => {
@@ -188,7 +188,7 @@ async function loadTrainers() {
 
     const typeLabel = document.createElement("div");
     typeLabel.className = "trainer-type";
-    typeLabel.textContent = t.type; // ispis tipa ispod imena
+    typeLabel.textContent = t.type; 
     typeLabel.style.fontSize = "12px";
     typeLabel.style.color = "#555";
 
@@ -205,6 +205,22 @@ async function loadTrainers() {
 
 
 function selectTrainer(trainerId, el, preserveSelection = false) {
+  // U EDIT MODU — NEMA TOGGLE LOGIKE
+  if (preserveSelection) {
+    selectedTrainer = trainerId;
+
+    document.querySelectorAll(".trainer-card").forEach((card) => {
+      card.classList.remove("selected");
+    });
+
+    if (el) el.classList.add("selected");
+
+    document.getElementById("calendarContainer").style.display = "block";
+    renderCalendar();
+
+    console.log("Edit mode – trener označen:", selectedTrainer);
+    return;
+  }
   // Ako je kliknuti trener već odabran, odznači ga
   if (selectedTrainer === trainerId) {
     selectedTrainer = null;
@@ -231,10 +247,8 @@ function selectTrainer(trainerId, el, preserveSelection = false) {
   document.getElementById("calendarContainer").style.display = "block";
   renderCalendar();
 
-  if (!preserveSelection) {
-    document.getElementById("timeSlots").style.display = "none";
-    document.getElementById("bookFinal").style.display = "none";
-  }
+  document.getElementById("timeSlots").style.display = "none";
+  document.getElementById("bookFinal").style.display = "none";
 
   console.log("Odabrani trener:", selectedTrainer);
 }
