@@ -1125,6 +1125,7 @@ async function loadAppointments() {
 
 function renderFilteredUserAppointments() {
   const wrap = document.getElementById("apptList");
+  
   console.log("renderFilteredUserAppointments: wrap element:", wrap);
 
   if (!wrap) {
@@ -1913,15 +1914,23 @@ document.getElementById("userDateFilter")?.addEventListener("change", (e) => {
   renderFilteredUserAppointments();
 });
 
-document
-  .getElementById("clearUserFiltersBtn")
-  ?.addEventListener("click", () => {
-    userFilterService = "";
-    userFilterDate = "";
-    document.getElementById("userServiceFilter").value = "";
-    document.getElementById("userDateFilter").value = "";
-    renderFilteredUserAppointments();
-  });
+document.addEventListener("DOMContentLoaded", () => {
+  const btn = document.getElementById("clearUserFiltersBtn");
+  if (btn) {
+    btn.addEventListener("click", () => {
+      userFilterService = "";
+      userFilterDate = "";
+      const serviceInput = document.getElementById("userServiceFilter");
+      const dateInput = document.getElementById("userDateFilter");
+      if (serviceInput) serviceInput.value = "";
+      if (dateInput) dateInput.value = "";
+      renderFilteredUserAppointments();
+    });
+  } else {
+    console.error("clearUserFiltersBtn not found!");
+  }
+});
+
 
 // Admin filter event listeners
 document
