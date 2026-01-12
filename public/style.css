@@ -23,21 +23,56 @@ body {
   align-items: start;
 }
 
+.main-content.history-active {
+  grid-template-columns: 1fr;
+}
+
+.main-content.history-active #userApptPanel {
+  max-width: 100%;
+}
+
 @media (max-width: 1024px) {
   .main-content {
     grid-template-columns: 1fr;
+  }
+
+  .header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .logo-section {
+    justify-content: center;
+  }
+
+  .tabs {
+    justify-content: center;
+    order: 2;
+  }
+
+  #logoutBtn {
+    order: 3;
+    width: 100%;
   }
 }
 
 .header {
   background: rgba(255, 255, 255, 0.98);
   border-radius: 16px;
-  padding: 24px 32px;
+  padding: 20px 32px;
   margin-bottom: 20px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  gap: 20px;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .logo-section {
@@ -57,12 +92,17 @@ body {
   background: linear-gradient(135deg, #2d5f3f 0%, #1a4d2e 100%);
   color: white;
   border: none;
-  padding: 10px 20px;
+  padding: 0 20px;
   border-radius: 8px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
   box-shadow: 0 2px 8px rgba(45, 95, 63, 0.3);
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
 }
 
 #logoutBtn:hover {
@@ -157,6 +197,12 @@ button:disabled {
   font-size: 14px;
   border-left: 4px solid #c62828;
   display: none;
+}
+
+.hint-text {
+  margin-top: 8px;
+  color: #1f5133;
+  font-size: 14px;
 }
 
 .error:not(:empty) {
@@ -461,6 +507,7 @@ tr:hover {
   display: flex;
   gap: 4px;
   align-items: center;
+  justify-content: center;
 }
 
 .trainer-grid {
@@ -572,8 +619,247 @@ tr:hover {
   box-shadow: 0 4px 12px rgba(45, 95, 63, 0.4);
 }
 
-.locked-text {
-  color: #999;
-  font-style: italic;
+.tabs {
+  display: flex;
+  gap: 8px;
+  margin: 0;
+  border: none;
+  align-items: center;
+}
+
+.tab-btn {
+  padding: 0 20px;
+  background: #f0f7f3;
+  border: 2px solid #d0e3d9;
+  border-radius: 8px;
+  color: #666;
   font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin: 0;
+  box-shadow: none;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.tab-btn:hover {
+  color: #2d5f3f;
+  background: #e8f5e9;
+  border-color: #2d5f3f;
+  transform: translateY(-2px);
+  box-shadow: 0 2px 8px rgba(45, 95, 63, 0.2);
+}
+
+.tab-btn.active {
+  color: white;
+  background: linear-gradient(135deg, #2d5f3f 0%, #1a4d2e 100%);
+  border-color: #1a4d2e;
+  box-shadow: 0 2px 8px rgba(45, 95, 63, 0.3);
+}
+
+.tab-content {
+  display: none;
+}
+
+.tab-content.active {
+  display: block;
+}
+
+.charts-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  margin-top: 32px;
+  margin-bottom: 32px;
+}
+
+@media (max-width: 768px) {
+  .charts-container {
+    grid-template-columns: 1fr;
+  }
+
+  .stats-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .stat-item:not(:last-child)::after {
+    width: 60%;
+    height: 1px;
+    left: 20%;
+    top: auto;
+    bottom: 0;
+    background: linear-gradient(to right, transparent, #d0e3d9, transparent);
+  }
+
+  .stat-value {
+    font-size: 40px;
+  }
+}
+
+.chart-wrapper {
+  background: white;
+  padding: 24px;
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  border: 1px solid rgba(45, 95, 63, 0.1);
+}
+
+.chart-wrapper:hover {
+  box-shadow: 0 8px 24px rgba(45, 95, 63, 0.15);
+  transform: translateY(-4px);
+}
+
+.chart-wrapper h4 {
+  color: #1a4d2e;
+  margin-bottom: 20px;
+  font-size: 18px;
+  text-align: center;
+  font-weight: 700;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #e8f5e9;
+}
+
+.chart-wrapper canvas {
+  max-height: 300px;
+}
+
+.stats-summary {
+  background: white;
+  padding: 0;
+  border-radius: 16px;
+  margin-bottom: 32px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.stat-item {
+  text-align: center;
+  padding: 40px 24px;
+  position: relative;
+  background: linear-gradient(135deg, #f8fdf9 0%, #ffffff 100%);
+  transition: all 0.3s ease;
+}
+
+.stat-item:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  top: 20%;
+  height: 60%;
+  width: 1px;
+  background: linear-gradient(to bottom, transparent, #d0e3d9, transparent);
+}
+
+.stat-item:hover {
+  background: linear-gradient(135deg, #e8f5e9 0%, #f0f7f3 100%);
+  transform: translateY(-2px);
+}
+
+.stat-value {
+  font-size: 28px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #2d5f3f 0%, #1a4d2e 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  display: block;
+  margin-bottom: 12px;
+  line-height: 1.2;
+}
+
+.stat-label {
+  font-size: 15px;
+  color: #555;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+}
+
+.history-section {
+  background: white;
+  padding: 24px;
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  margin-top: 24px;
+}
+
+.history-section h4 {
+  color: #1a4d2e;
+  margin-bottom: 16px;
+  font-size: 18px;
+  font-weight: 700;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #e8f5e9;
+}
+
+#historyView table {
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+#historyView th {
+  background: linear-gradient(135deg, #2d5f3f 0%, #1a4d2e 100%);
+  padding: 14px;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+#historyView td {
+  padding: 14px;
+  font-size: 14px;
+}
+
+#historyView tr:hover {
+  background: linear-gradient(135deg, #f8fdf9 0%, #f0f7f3 100%);
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+#historyView {
+  animation: fadeInUp 0.5s ease-out;
+}
+
+.stat-item {
+  animation: fadeInUp 0.5s ease-out;
+}
+
+.stat-item:nth-child(1) {
+  animation-delay: 0.1s;
+}
+
+.stat-item:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.stat-item:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+.chart-wrapper {
+  animation: fadeInUp 0.6s ease-out;
+}
+
+.chart-wrapper:nth-child(1) {
+  animation-delay: 0.4s;
+}
+
+.chart-wrapper:nth-child(2) {
+  animation-delay: 0.5s;
 }

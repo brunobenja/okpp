@@ -2,34 +2,626 @@ let isAdmin = false;
 let allAppointments = [];
 let allUserAppointments = [];
 let allAdminAppointments = [];
-let allTrainers = [];
 let selectedTrainer = null;
+let selectedServiceId = null;
 let selectedDate = null;
 let selectedTime = null;
 let currentMonth = new Date();
-let editingAppointmentId = null;
 let pendingDeleteId = null;
 let pendingDeleteType = null;
-let userFilterDate = "";
+let pendingEditId = null;
 let adminFilterTrainer = "";
 let adminFilterDate = "";
-// Mogući termini u danu
-const allTimeSlots = [
-  "08:00",
-  "09:00",
-  "10:00",
-  "11:00",
-  "12:00",
-  "13:00",
-  "14:00",
-  "15:00",
-  "16:00",
-  "17:00",
-  "18:00",
-  "19:00",
-  "20:00",
-];
-const dayLabels = ["Pon", "Uto", "Sri", "Čet", "Pet", "Sub", "Ned"];
+let userFilterDate = "";
+let userFilterService = "";
+let cachedTrainers = [];
+let services = [];
+let filterServiceId = null;
+let filterTrainerType = null;
+let filterDateVal = "";
+let filterTimeVal = "";
+let allTrainers = [];
+let serviceChart = null;
+let trainerChart = null;
+let defaultWorkHours = { open_hour: 8, close_hour: 20 };
+let workHours = { open_hour: 8, close_hour: 20 };
+let workHoursSource = "global";
+let adminReserveHours = { open_hour: 8, close_hour: 20 };
+let allTimeSlots = [];
+const dayLabels = ["Ned", "Pon", "Uto", "Sri", "Čet", "Pet", "Sub"];
+let historyMode = false;
+let adminServiceChart = null;
+let adminTrainerChart = null;
+let peakHoursChart = null;
+let cancellationsChart = null;
+
+function padHour(n) {
+  return String(n).padStart(2, "0");
+}
+
+function buildTimeSlots() {
+  const open = Number(workHours.open_hour ?? 8);
+  const close = Number(workHours.close_hour ?? 20);
+  const slots = [];
+  for (let h = open; h <= close; h++) {
+    slots.push(`${padHour(h)}:00`);
+  }
+  allTimeSlots = slots;
+}
+
+function updateWorkHoursDisplay() {
+  const userDisplay = document.getElementById("workHoursDisplay");
+  if (userDisplay) {
+    const label =
+      workHoursSource === "override"
+        ? "Radno vrijeme trenera (raspon)"
+        : workHoursSource === "trainer"
+        ? "Radno vrijeme trenera"
+        : "Radno vrijeme";
+    userDisplay.textContent = `${label}: ${padHour(
+      workHours.open_hour
+    )}:00 - ${padHour(workHours.close_hour)}:00`;
+  }
+  const adminDisplay = document.getElementById("currentWorkHoursAdmin");
+  if (adminDisplay) {
+    adminDisplay.textContent = `Trenutno: ${padHour(
+      workHours.open_hour
+    )}:00 - ${padHour(workHours.close_hour)}:00`;
+  }
+  const openInput = document.getElementById("workOpen");
+  const closeInput = document.getElementById("workClose");
+  if (openInput) openInput.value = `${padHour(workHours.open_hour)}:00`;
+  if (closeInput) closeInput.value = `${padHour(workHours.close_hour)}:00`;
+}
+
+async function fetchTrainerWorkHours(trainerId, dateStr = "") {
+  if (!trainerId) return null;
+  try {
+    const query = dateStr ? `?date=${encodeURIComponent(dateStr)}` : "";
+    const res = await get(`/api/trainer/${trainerId}/work-hours${query}`);
+    return res;
+  } catch (e) {
+    console.warn("Ne mogu učitati radno vrijeme trenera", e);
+    return null;
+  }
+}
+
+async function applyTrainerHours(trainerId, dateStr = "") {
+  const hours = trainerId
+    ? await fetchTrainerWorkHours(trainerId, dateStr)
+    : null;
+  if (
+    hours &&
+    hours.open_hour !== undefined &&
+    hours.close_hour !== undefined
+  ) {
+    workHours = {
+      open_hour: Number(hours.open_hour),
+      close_hour: Number(hours.close_hour),
+    };
+    workHoursSource = hours.source || "trainer";
+  } else {
+    workHours = { ...defaultWorkHours };
+    workHoursSource = "global";
+  }
+  buildTimeSlots();
+  updateWorkHoursDisplay();
+  if (selectedDate) updateTimeSlots();
+}
+
+async function getEffectiveTrainerHours(trainerId, dateStr = "") {
+  const hours = trainerId
+    ? await fetchTrainerWorkHours(trainerId, dateStr)
+    : null;
+  if (
+    hours &&
+    hours.open_hour !== undefined &&
+    hours.close_hour !== undefined
+  ) {
+    return {
+      open_hour: Number(hours.open_hour),
+      close_hour: Number(hours.close_hour),
+    };
+  }
+  return { ...defaultWorkHours };
+}
+
+async function loadWorkHours() {
+  try {
+    const hours = await get("/api/work-hours");
+    defaultWorkHours = {
+      open_hour: Number(hours.open_hour ?? 8),
+      close_hour: Number(hours.close_hour ?? 20),
+    };
+    workHours = { ...defaultWorkHours };
+    workHoursSource = "global";
+  } catch (e) {
+    console.warn("Unable to load work hours, using defaults", e);
+    defaultWorkHours = { open_hour: 8, close_hour: 20 };
+    workHours = { ...defaultWorkHours };
+    workHoursSource = "global";
+  }
+  buildTimeSlots();
+  updateWorkHoursDisplay();
+}
+
+function toggleHistory() {
+  historyMode = !historyMode;
+  const currentView = document.getElementById("currentView");
+  const historyView = document.getElementById("historyView");
+  const bookingPanel = document.getElementById("bookingPanel");
+  const historyBtn = document.getElementById("historyToggle");
+  const userApptTitle = document.getElementById("userApptTitle");
+  const bookingTitle = document.getElementById("bookingTitle");
+  const mainContent = document.getElementById("mainContent");
+
+  if (historyMode) {
+    // Show history
+    currentView.style.display = "none";
+    historyView.style.display = "block";
+    bookingPanel.style.display = "none";
+    historyBtn.classList.add("active");
+    userApptTitle.textContent = "Povijest termina";
+    mainContent.classList.add("history-active");
+    renderHistoryTab();
+  } else {
+    // Show current appointments and booking
+    currentView.style.display = "block";
+    historyView.style.display = "none";
+    bookingPanel.style.display = "block";
+    historyBtn.classList.remove("active");
+    userApptTitle.textContent = "Moji termini";
+    mainContent.classList.remove("history-active");
+  }
+}
+
+function renderHistoryTab() {
+  const now = new Date();
+  const pastAppointments = allUserAppointments.filter((a) => {
+    return new Date(a.scheduled_at) < now;
+  });
+
+  // Update stats
+  document.getElementById("totalPastAppts").textContent =
+    pastAppointments.length;
+
+  // Calculate service statistics
+  const serviceStats = {};
+  pastAppointments.forEach((a) => {
+    const service = a.service_name || "Nepoznato";
+    serviceStats[service] = (serviceStats[service] || 0) + 1;
+  });
+
+  // Calculate trainer statistics
+  const trainerStats = {};
+  pastAppointments.forEach((a) => {
+    const trainer = `${a.trainer_name} ${a.trainer_surname}`;
+    trainerStats[trainer] = (trainerStats[trainer] || 0) + 1;
+  });
+
+  // Find favorites
+  let favService = "-";
+  let maxServiceCount = 0;
+  Object.entries(serviceStats).forEach(([service, count]) => {
+    if (count > maxServiceCount) {
+      maxServiceCount = count;
+      favService = service;
+    }
+  });
+
+  let favTrainerName = "-";
+  let maxTrainerCount = 0;
+  Object.entries(trainerStats).forEach(([trainer, count]) => {
+    if (count > maxTrainerCount) {
+      maxTrainerCount = count;
+      favTrainerName = trainer;
+    }
+  });
+
+  document.getElementById("favService").textContent = favService;
+  document.getElementById("favTrainer").textContent = favTrainerName;
+
+  // Render charts
+  renderServiceChart(serviceStats);
+  renderTrainerChart(trainerStats);
+
+  // Render past appointments list
+  renderPastAppointmentsList(pastAppointments);
+}
+
+function renderServiceChart(serviceStats) {
+  const ctx = document.getElementById("serviceChart");
+  if (!ctx) return;
+
+  if (serviceChart) {
+    serviceChart.destroy();
+  }
+
+  const labels = Object.keys(serviceStats);
+  const data = Object.values(serviceStats);
+
+  if (labels.length === 0) {
+    ctx.getContext("2d").clearRect(0, 0, ctx.width, ctx.height);
+    return;
+  }
+
+  serviceChart = new Chart(ctx, {
+    type: "pie",
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          data: data,
+          backgroundColor: [
+            "#FF6384",
+            "#36A2EB",
+            "#FFCE56",
+            "#4BC0C0",
+            "#9966FF",
+            "#FF9F40",
+          ],
+          borderWidth: 2,
+          borderColor: "#fff",
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: {
+        legend: {
+          position: "bottom",
+          labels: {
+            padding: 12,
+            font: {
+              size: 12,
+            },
+          },
+        },
+        tooltip: {
+          callbacks: {
+            label: function (context) {
+              const label = context.label || "";
+              const value = context.parsed || 0;
+              const total = context.dataset.data.reduce((a, b) => a + b, 0);
+              const percentage = ((value / total) * 100).toFixed(1);
+              return `${label}: ${value} (${percentage}%)`;
+            },
+          },
+        },
+      },
+    },
+  });
+}
+
+function renderTrainerChart(trainerStats) {
+  const ctx = document.getElementById("trainerChart");
+  if (!ctx) return;
+
+  if (trainerChart) {
+    trainerChart.destroy();
+  }
+
+  const labels = Object.keys(trainerStats);
+  const data = Object.values(trainerStats);
+
+  if (labels.length === 0) {
+    ctx.getContext("2d").clearRect(0, 0, ctx.width, ctx.height);
+    return;
+  }
+
+  trainerChart = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: "Broj termina",
+          data: data,
+          backgroundColor: "#36A2EB",
+          borderColor: "#2980B9",
+          borderWidth: 1,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: {
+            stepSize: 1,
+          },
+        },
+        x: {
+          ticks: {
+            font: {
+              size: 11,
+            },
+            maxRotation: 45,
+            minRotation: 45,
+          },
+        },
+      },
+      plugins: {
+        legend: {
+          display: false,
+        },
+        tooltip: {
+          callbacks: {
+            label: function (context) {
+              return `Termina: ${context.parsed.y}`;
+            },
+          },
+        },
+      },
+    },
+  });
+}
+
+function renderPastAppointmentsList(pastAppointments) {
+  const wrap = document.getElementById("pastApptList");
+
+  if (!pastAppointments || pastAppointments.length === 0) {
+    wrap.textContent = "Još nema prošlih termina.";
+    return;
+  }
+
+  // Sort by date (newest first)
+  pastAppointments.sort((a, b) => {
+    return new Date(b.scheduled_at) - new Date(a.scheduled_at);
+  });
+
+  const rows = pastAppointments
+    .map(
+      (a) => `
+          <tr>
+            <td>${fmt(a.scheduled_at)}</td>
+            <td>${a.service_name || "N/A"}</td>
+            <td>${a.trainer_name} ${a.trainer_surname}</td>
+          </tr>
+        `
+    )
+    .join("");
+
+  wrap.innerHTML = `<table><thead><tr><th>Vrijeme</th><th>Usluga</th><th>Trener</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+async function loadAdminStatistics() {
+  if (!isAdmin) return;
+  try {
+    const stats = await get("/api/admin/statistics");
+
+    // Update summary stats
+    document.getElementById("totalApptsAdmin").textContent =
+      stats.totalAppointments;
+    document.getElementById("totalCancellations").textContent =
+      stats.totalCancellations;
+    document.getElementById("recentCancellations").textContent =
+      stats.recentCancellations;
+
+    // Render charts
+    renderAdminServiceChart(stats.serviceBreakdown);
+    renderAdminTrainerChart(stats.trainerBreakdown);
+    renderPeakHoursChart(stats.peakHours);
+    renderCancellationsChart(stats.cancellationsByType);
+  } catch (e) {
+    console.error("Error loading admin statistics:", e);
+  }
+}
+
+function renderAdminServiceChart(data) {
+  const ctx = document.getElementById("adminServiceChart");
+  if (!ctx) return;
+
+  if (adminServiceChart) {
+    adminServiceChart.destroy();
+  }
+
+  if (!data || data.length === 0) {
+    ctx.getContext("2d").clearRect(0, 0, ctx.width, ctx.height);
+    return;
+  }
+
+  const labels = data.map((d) => d.name || "Nepoznato");
+  const values = data.map((d) => d.count);
+
+  adminServiceChart = new Chart(ctx, {
+    type: "pie",
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          data: values,
+          backgroundColor: [
+            "#FF6384",
+            "#36A2EB",
+            "#FFCE56",
+            "#4BC0C0",
+            "#9966FF",
+            "#FF9F40",
+          ],
+          borderWidth: 2,
+          borderColor: "#fff",
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: {
+        legend: {
+          position: "bottom",
+          labels: {
+            padding: 12,
+            font: {
+              size: 12,
+            },
+          },
+        },
+      },
+    },
+  });
+}
+
+function renderAdminTrainerChart(data) {
+  const ctx = document.getElementById("adminTrainerChart");
+  if (!ctx) return;
+
+  if (adminTrainerChart) {
+    adminTrainerChart.destroy();
+  }
+
+  if (!data || data.length === 0) {
+    ctx.getContext("2d").clearRect(0, 0, ctx.width, ctx.height);
+    return;
+  }
+
+  const labels = data.map((d) => d.name);
+  const values = data.map((d) => d.count);
+
+  adminTrainerChart = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: "Broj termina",
+          data: values,
+          backgroundColor: "#36A2EB",
+          borderColor: "#2980B9",
+          borderWidth: 1,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: {
+            stepSize: 1,
+          },
+        },
+        x: {
+          ticks: {
+            font: {
+              size: 10,
+            },
+            maxRotation: 45,
+            minRotation: 45,
+          },
+        },
+      },
+      plugins: {
+        legend: {
+          display: false,
+        },
+      },
+    },
+  });
+}
+
+function renderPeakHoursChart(data) {
+  const ctx = document.getElementById("peakHoursChart");
+  if (!ctx) return;
+
+  if (peakHoursChart) {
+    peakHoursChart.destroy();
+  }
+
+  if (!data || data.length === 0) {
+    ctx.getContext("2d").clearRect(0, 0, ctx.width, ctx.height);
+    return;
+  }
+
+  const labels = data.map((d) => `${String(d.hour).padStart(2, "0")}:00`);
+  const values = data.map((d) => d.count);
+
+  peakHoursChart = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: "Broj termina",
+          data: values,
+          backgroundColor: "rgba(75, 192, 192, 0.2)",
+          borderColor: "#4BC0C0",
+          borderWidth: 2,
+          tension: 0.3,
+          fill: true,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: {
+            stepSize: 1,
+          },
+        },
+      },
+      plugins: {
+        legend: {
+          display: false,
+        },
+      },
+    },
+  });
+}
+
+function renderCancellationsChart(data) {
+  const ctx = document.getElementById("cancellationsChart");
+  if (!ctx) return;
+
+  if (cancellationsChart) {
+    cancellationsChart.destroy();
+  }
+
+  if (!data || data.length === 0) {
+    ctx.getContext("2d").clearRect(0, 0, ctx.width, ctx.height);
+    return;
+  }
+
+  const labels = data.map((d) => (d.type === "user" ? "Korisnik" : "Admin"));
+  const values = data.map((d) => d.count);
+
+  cancellationsChart = new Chart(ctx, {
+    type: "doughnut",
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          data: values,
+          backgroundColor: ["#FF6384", "#36A2EB"],
+          borderWidth: 2,
+          borderColor: "#fff",
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: {
+        legend: {
+          position: "bottom",
+          labels: {
+            padding: 12,
+            font: {
+              size: 12,
+            },
+          },
+        },
+      },
+    },
+  });
+}
 
 async function get(path) {
   const res = await fetch(path);
@@ -65,6 +657,7 @@ async function del(path) {
   if (!res.ok) throw new Error(data.error || "Request failed");
   return data;
 }
+
 async function put(path, body) {
   const res = await fetch(path, {
     method: "PUT",
@@ -114,13 +707,9 @@ function closeModal() {
   pendingDeleteId = null;
   pendingDeleteType = null;
 }
-// Funkcija za provjeru je li dan za rehabilitaciju
-function isRehabDay(dateStr) {
-  const day = new Date(dateStr).getDay();
-  return day === 0 || day === 2 || day === 4; // PON, SRI, PET
-}
-// Funkcija za potvrdu brisanja
+
 async function confirmDeleteFromModal() {
+  // Save the values BEFORE closing modal
   const deleteId = pendingDeleteId;
   const deleteType = pendingDeleteType;
 
@@ -138,6 +727,7 @@ async function confirmDeleteFromModal() {
       console.log("Deleting admin appointment:", deleteId);
       await del(`/api/admin/appointments/${deleteId}`);
       await loadAdminAppointments();
+      await loadAdminStatistics();
     }
 
     showModal("Uspjeh", "Termin je uspješno obrisan!", "success-modal");
@@ -146,27 +736,47 @@ async function confirmDeleteFromModal() {
     showModal("Pogreška", e.message, "error-modal");
   }
 }
-// Funkcija za učitavanje svih termina za filtriranje
+
 async function loadAllAppointmentsForFiltering() {
   allAppointments = await get("/api/appointments/all");
 }
-// Funkcija za učitavanje trenera
-async function loadTrainers() {
-  const trainers = await get("/api/trainers");
-  allTrainers = trainers; // globalno
 
-  const grid = document.getElementById("personal");
+async function loadTrainers() {
+  try {
+    let url = "/api/trainers";
+    const params = [];
+    // Note: Service filtering is disabled since all trainers offer all services
+    // if (filterServiceId) {
+    //   params.push(`serviceId=${filterServiceId}`);
+    // }
+    if (filterTrainerType) {
+      params.push(`type=${encodeURIComponent(filterTrainerType)}`);
+    }
+    if (params.length > 0) {
+      url += "?" + params.join("&");
+    }
+    allTrainers = await get(url);
+    renderFilteredTrainers();
+  } catch (e) {
+    console.error("Error loading trainers:", e);
+  }
+}
+
+function renderFilteredTrainers() {
+  const grid = document.getElementById("trainerGrid");
   grid.innerHTML = "";
+
+  let trainers = [...allTrainers];
+
+  if (trainers.length === 0) {
+    grid.innerHTML =
+      '<p style="color: #666; padding: 12px;">Nema dostupnih trenera za odabrane filtere.</p>';
+    return;
+  }
 
   trainers.forEach((t) => {
     const card = document.createElement("div");
     card.className = "trainer-card";
-
-    if (t.type === "personal") card.style.border = "2px solid green";
-    else if (t.type === "group") card.style.border = "2px solid orange";
-    else if (t.type === "rehabilitation") card.style.border = "2px solid blue";
-
-    card.dataset.trainerId = t.id;
     card.onclick = () => selectTrainer(t.id, card);
 
     const avatar = document.createElement("div");
@@ -182,9 +792,9 @@ async function loadTrainers() {
       img.style.objectFit = "cover";
       avatar.appendChild(img);
     } else {
-      const initials = `${(t.name || "").charAt(0)}${(t.surname || "")
-        .charAt(0)
-        .toUpperCase()}`;
+      const initials = `${(t.name || "").charAt(0)}${(t.surname || "").charAt(
+        0
+      )}`.toUpperCase();
       avatar.textContent = initials || "TR";
     }
 
@@ -192,113 +802,66 @@ async function loadTrainers() {
     name.className = "trainer-name";
     name.textContent = `${t.name} ${t.surname}`;
 
-    const typeLabel = document.createElement("div");
-    typeLabel.className = "trainer-type";
-    typeLabel.textContent = t.type;
-    typeLabel.style.fontSize = "12px";
-    typeLabel.style.color = "#555";
-
     card.appendChild(avatar);
     card.appendChild(name);
-    card.appendChild(typeLabel);
+
+    if (t.trainer_type) {
+      const type = document.createElement("div");
+      type.style.fontSize = "12px";
+      type.style.color = "#666";
+      type.style.marginTop = "4px";
+      type.textContent = t.trainer_type;
+      card.appendChild(type);
+    }
+
     grid.appendChild(card);
   });
-
-  return trainers; // <-- vrati listu trenera
 }
 
-function highlightSelectedTrainer() {
-  if (!selectedTrainer) return;
+async function selectTrainer(trainerId, cardEl) {
+  selectedTrainer = trainerId;
+  selectedDate = null;
+  selectedTime = null;
+  selectedServiceId = services && services.length > 0 ? services[0].id : null;
 
+  // Update UI
   document.querySelectorAll(".trainer-card").forEach((card) => {
-    const id = card.dataset.trainerId;
-    if (String(id) === String(selectedTrainer)) {
-      card.classList.add("selected");
-    } else {
-      card.classList.remove("selected");
-    }
+    card.classList.remove("selected");
   });
-}
+  if (cardEl) cardEl.classList.add("selected");
 
-// Funkcija za odabir trenera
-// preserveSelection: if true, do not clear selectedDate/selectedTime or hide booking UI
-
-function selectTrainer(trainerId, el, preserveSelection = false) {
-  // U EDIT MODU — NEMA TOGGLE LOGIKE
-  if (preserveSelection) {
-    selectedTrainer = trainerId;
-
-    document.querySelectorAll(".trainer-card").forEach((card) => {
-      card.classList.remove("selected");
+  const calendarContainer = document.getElementById("calendarContainer");
+  calendarContainer.style.display = "block";
+  const servicePanel = document.getElementById("servicePanel");
+  if (services && services.length > 0) {
+    servicePanel.style.display = "block";
+    // Show all services (no trainer-specific filtering in this system)
+    const serviceSelect = document.getElementById("serviceSelect");
+    serviceSelect.innerHTML = "";
+    services.forEach((s) => {
+      const opt = document.createElement("option");
+      opt.value = s.id;
+      opt.textContent = `${s.name} (${s.duration} min)`;
+      serviceSelect.appendChild(opt);
     });
-
-    if (el) el.classList.add("selected");
-
-    // Ako je odabrano vrijeme zauzeto za novog trenera – resetiraj samo vrijeme
-    if (
-      selectedDate &&
-      selectedTime &&
-      isTimeBlockedForTrainer(selectedTrainer, selectedDate, selectedTime)
-    ) {
-      selectedTime = null;
+    if (services.length > 0) {
+      selectedServiceId = services[0].id;
     }
-
-    document.getElementById("calendarContainer").style.display = "block";
-    renderCalendar();
-    updateTimeSlots();
-    updateBookButton();
-
-    console.log("Edit mode – trener označen:", selectedTrainer);
-    return;
   }
-  if (!preserveSelection) {
-    selectedDate = null;
-    selectedTime = null;
-    currentMonth = new Date();
-  }
-  // Ako je kliknuti trener već odabran, odznači ga
-  if (selectedTrainer === trainerId) {
-    selectedTrainer = null;
-    if (el) el.classList.remove("selected");
-  } else {
-    selectedTrainer = trainerId;
-
-    // Ukloni "selected" sa svih kartica (sve kategorije)
-    document.querySelectorAll(".trainer-card").forEach((card) => {
-      card.classList.remove("selected");
-    });
-
-    // Označi kliknutog trenera
-    if (el) el.classList.add("selected");
-  }
-
-  /*   if (!preserveSelection) {
-    selectedDate = null;
-    selectedTime = null;
-    currentMonth = new Date();
-  } */
-
-  // Prikaži kalendar i resetiraj time slotove
-  document.getElementById("calendarContainer").style.display = "block";
+  currentMonth = new Date();
+  await applyTrainerHours(trainerId, selectedDate || "");
   renderCalendar();
 
   document.getElementById("timeSlots").style.display = "none";
   document.getElementById("bookFinal").style.display = "none";
-
-  console.log("Odabrani trener:", selectedTrainer);
 }
 
-//funkcija za kalendar i odabir datuma
 function renderCalendar() {
   const grid = document.getElementById("calendarGrid");
   const monthYear = document.getElementById("monthYear");
 
   const year = currentMonth.getFullYear();
   const month = currentMonth.getMonth();
-
-  const trainer = allTrainers.find(
-    (t) => String(t.id) === String(selectedTrainer)
-  );
 
   monthYear.textContent = new Date(year, month).toLocaleDateString("hr-HR", {
     month: "long",
@@ -307,7 +870,7 @@ function renderCalendar() {
 
   grid.innerHTML = "";
 
-  // Dodavanje oznaka dana u tjednu
+  // Day labels
   dayLabels.forEach((label) => {
     const div = document.createElement("div");
     div.className = "calendar-day day-label";
@@ -315,57 +878,43 @@ function renderCalendar() {
     grid.appendChild(div);
   });
 
-  // Prvi dan u mjesecu i broj dana u mjesecu
-  let firstDay = new Date(year, month, 1).getDay(); // 0-6, nedjelja=0
-  firstDay = firstDay === 0 ? 6 : firstDay - 1;
-
+  const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  // Prazna polja prije prvog dana mjeseca
+  // Empty cells before month starts
   for (let i = 0; i < firstDay; i++) {
     const div = document.createElement("div");
     div.className = "calendar-day disabled";
     grid.appendChild(div);
   }
 
-  // Dohvaćanje dana u trenutnom mjesecu
+  // Days of month
   for (let day = 1; day <= daysInMonth; day++) {
     const date = new Date(year, month, day);
     date.setHours(0, 0, 0, 0);
 
-    const dateStr = date.toISOString().split("T")[0];
+    const dateYear = date.getFullYear();
+    const dateMonth = String(date.getMonth() + 1).padStart(2, "0");
+    const dateDay = String(date.getDate()).padStart(2, "0");
+    const dateStr = `${dateYear}-${dateMonth}-${dateDay}`;
+
     const isPast = date < today;
 
     const div = document.createElement("div");
     div.className = "calendar-day";
     div.textContent = day;
 
-    // Označi prošle dane
     if (isPast) {
       div.classList.add("disabled");
-    }
-
-    // Označi danas
-    if (date.getTime() === today.getTime()) {
-      div.classList.add("today");
-    }
-
-    // Označi odabrani datum
-    if (selectedDate === dateStr) {
-      div.classList.add("selected");
-    }
-
-    // Provjera za rehabilitacijski trening
-    let isDisabledForRehab = false;
-    if (trainer?.type === "rehabilitation" && !isRehabDay(dateStr)) {
-      isDisabledForRehab = true;
-      div.classList.add("disabled");
-    }
-
-    // Postavi onclick samo ako dan nije prošao i nije disabled
-    if (!isPast && !isDisabledForRehab) {
+    } else {
+      if (date.getTime() === today.getTime()) {
+        div.classList.add("today");
+      }
+      if (selectedDate === dateStr) {
+        div.classList.add("selected");
+      }
       div.onclick = () => selectDate(dateStr);
     }
 
@@ -373,696 +922,132 @@ function renderCalendar() {
   }
 }
 
-// Funkcija za odabir datuma
-function selectDate(dateStr) {
+async function selectDate(dateStr) {
   selectedDate = dateStr;
   selectedTime = null;
-  renderCalendar();
-  updateTimeSlots();
-  updateBookButton();
-  const trainer = allTrainers.find(
-    (t) => String(t.id) === String(selectedTrainer)
-  );
-  if (trainer?.type === "rehabilitation" && !isRehabDay(dateStr)) {
-    alert(
-      "Rehabilitacijski treninzi su dostupni samo ponedjeljkom, srijedom i petkom."
-    );
-    return;
-  }
-  selectedDate = dateStr;
-  selectedTime = null;
+  await applyTrainerHours(selectedTrainer, dateStr);
   renderCalendar();
   updateTimeSlots();
   updateBookButton();
 }
-// Funkcija za update dostupnih termina
+
 function updateTimeSlots() {
   const container = document.getElementById("timeSlots");
   const grid = document.getElementById("timeGrid");
 
-  if (!selectedTrainer || !selectedDate) {
+  if (!selectedTrainer || !selectedDate || !selectedServiceId) {
     container.style.display = "none";
     return;
   }
 
   container.style.display = "block";
   grid.innerHTML = "";
+  const selectedService = services.find((s) => s.id === selectedServiceId);
+  const selDuration = selectedService?.duration || 60;
 
-  const appointments = allAppointments || []; // sve rezervacije (trenere)
-  const userAppointments = allUserAppointments || []; // sve korisnikove rezervacije
-
-  // Trenerovi termini
-  const trainerAppointments = allAppointments.filter(
-    (a) => String(a.trainer_id) === String(selectedTrainer)
-  );
-
-  // Blokirana vremena za trenera
-  const bookedTimes = new Set();
-  appointments.forEach((a) => {
-    if (editingAppointmentId && String(a.id) === String(editingAppointmentId))
-      return;
-    if (String(a.trainer_id) === String(selectedTrainer)) {
-      const apptDate = new Date(a.scheduled_at);
-      const dateStr = apptDate.toISOString().split("T")[0];
-      if (dateStr === selectedDate) {
-        const time = apptDate.toTimeString().slice(0, 5);
-        bookedTimes.add(time);
-      }
-    }
-  });
-
-  // Funkcija za provjeru je li termin zaključan
-  function isAppointmentLockedFrontend(scheduledAt) {
-    const now = new Date();
-    const appt = new Date(scheduledAt);
-
-    if (appt <= now) return true;
-
-    const diffMs = appt - now;
-    const hours24 = 24 * 60 * 60 * 1000;
-    return diffMs < hours24;
+  if (!allTimeSlots.length) {
+    grid.innerHTML =
+      '<p style="color:#444;">Radno vrijeme nije postavljeno.</p>';
+    return;
   }
 
-  // Funkcija za provjeru je li vrijeme blokirano za trenera
-
-  function isTimeBlockedForTrainer(trainerId, date, time) {
-    if (!trainerId || !date || !time) return false;
-
-    return allAppointments.some((a) => {
-      if (editingAppointmentId && String(a.id) === String(editingAppointmentId))
-        return false;
-
-      const apptDate = new Date(a.scheduled_at);
-      const dateStr = apptDate.toISOString().split("T")[0];
-      const timeStr = apptDate.toTimeString().slice(0, 5);
-
-      return (
-        String(a.trainer_id) === String(trainerId) &&
-        dateStr === date &&
-        timeStr === time
-      );
-    });
+  function parseTimeToDate(dateStr, timeStr) {
+    return new Date(`${dateStr}T${timeStr}:00`);
   }
 
-  // Blokirana vremena za korisnika
-  const userBookedTimes = new Set();
-  userAppointments.forEach((a) => {
-    if (editingAppointmentId && String(a.id) === String(editingAppointmentId))
-      return;
-    const apptDate = new Date(a.scheduled_at);
-    const dateStr = apptDate.toISOString().split("T")[0];
-    if (dateStr === selectedDate) {
-      const time = apptDate.toTimeString().slice(0, 5);
-      userBookedTimes.add(time);
-    }
-  });
-
-  // Buttoni za sve termine
-  let isAdmin = false;
-  let allAppointments = [];
-  let allUserAppointments = [];
-  let allAdminAppointments = [];
-  let selectedTrainer = null;
-  let selectedDate = null;
-  let selectedTime = null;
-  let currentMonth = new Date();
-  let pendingDeleteId = null;
-  let pendingDeleteType = null;
-  let editingAppointmentId = null;
-  let adminFilterTrainer = "";
-  let adminFilterDate = "";
-  let userFilterDate = "";
-  // Mogući termini u danu
-  const allTimeSlots = [
-    "08:00",
-    "09:00",
-    "10:00",
-    "11:00",
-    "12:00",
-    "13:00",
-    "14:00",
-    "15:00",
-    "16:00",
-    "17:00",
-    "18:00",
-    "19:00",
-    "20:00",
-  ];
-  const dayLabels = ["Pon", "Uto", "Sri", "Čet", "Pet", "Sub", "Ned"];
-
-  async function get(path) {
-    const res = await fetch(path);
-    if (res.status === 401) {
-      location.href = "/";
-      return;
-    }
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || "Request failed");
-    return data;
-  }
-  async function post(path, body) {
-    const res = await fetch(path, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    if (res.status === 401) {
-      location.href = "/";
-      return;
-    }
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || "Request failed");
-    return data;
-  }
-  async function del(path) {
-    const res = await fetch(path, { method: "DELETE" });
-    if (res.status === 401) {
-      location.href = "/";
-      return;
-    }
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || "Request failed");
-    return data;
-  }
-  async function put(path, body) {
-    const res = await fetch(path, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    if (res.status === 401) {
-      location.href = "/";
-      return;
-    }
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || "Request failed");
-    return data;
+  function overlaps(start1, end1, start2, end2) {
+    return start1 < end2 && start2 < end1;
   }
 
-  function showModal(
-    title,
-    message,
-    type,
-    onConfirm = null,
-    showCancel = false
-  ) {
-    const overlay = document.createElement("div");
-    overlay.className = "modal-overlay";
+  allTimeSlots.forEach((time) => {
+    const btn = document.createElement("button");
+    btn.className = "time-btn";
+    btn.textContent = time;
+    const slotStart = parseTimeToDate(selectedDate, time);
+    const slotEnd = new Date(slotStart.getTime() + selDuration * 60000);
 
-    const modal = document.createElement("div");
-    modal.className = `modal ${type}-modal`;
-
-    modal.innerHTML = `
-          <h3>${title}</h3>
-          <p>${message}</p>
-          <div class="modal-buttons">
-            ${
-              showCancel
-                ? `<button class="modal-btn confirm" onclick="confirmDeleteFromModal()">Da</button>`
-                : ""
-            }
-            <button class="modal-btn ${
-              showCancel ? "cancel" : "close"
-            }" onclick="closeModal()">
-              ${showCancel ? "Ne" : "U redu"}
-            </button>
-          </div>
-        `;
-
-    overlay.appendChild(modal);
-    document.body.appendChild(overlay);
-  }
-
-  function closeModal() {
-    const overlay = document.querySelector(".modal-overlay");
-    overlay?.remove();
-    pendingDeleteId = null;
-    pendingDeleteType = null;
-  }
-  // Funkcija za provjeru je li dan za rehabilitaciju
-  function isRehabDay(dateStr) {
-    const day = new Date(dateStr).getDay();
-    return day === 0 || day === 2 || day === 4; // PON, SRI, PET
-  }
-  // Funkcija za potvrdu brisanja
-  async function confirmDeleteFromModal() {
-    const deleteId = pendingDeleteId;
-    const deleteType = pendingDeleteType;
-
-    console.log("confirmDeleteFromModal - ID:", deleteId, "Type:", deleteType);
-    closeModal();
-
-    try {
-      if (deleteType === "user") {
-        console.log("Deleting user appointment:", deleteId);
-        await del(`/api/appointments/${deleteId}`);
-        await loadAllAppointmentsForFiltering();
-        await loadAppointments();
-        updateTimeSlots();
-      } else {
-        console.log("Deleting admin appointment:", deleteId);
-        await del(`/api/admin/appointments/${deleteId}`);
-        await loadAdminAppointments();
-      }
-
-      showModal("Uspjeh", "Termin je uspješno obrisan!", "success-modal");
-      setTimeout(() => closeModal(), 2000);
-    } catch (e) {
-      showModal("Pogreška", e.message, "error-modal");
-    }
-  }
-  // Funkcija za učitavanje svih termina za filtriranje
-  async function loadAllAppointmentsForFiltering() {
-    allAppointments = await get("/api/appointments/all");
-  }
-  // Funkcija za učitavanje trenera
-  async function loadTrainers() {
-    const trainers = await get("/api/trainers");
-    allTrainers = trainers; // globalno
-
-    const grid = document.getElementById("personal");
-    grid.innerHTML = "";
-
-    trainers.forEach((t) => {
-      const card = document.createElement("div");
-      card.className = "trainer-card";
-
-      if (t.type === "personal") card.style.border = "2px solid green";
-      else if (t.type === "group") card.style.border = "2px solid orange";
-      else if (t.type === "rehabilitation")
-        card.style.border = "2px solid blue";
-
-      card.dataset.trainerId = t.id;
-      card.onclick = () => selectTrainer(t.id, card);
-
-      const avatar = document.createElement("div");
-      avatar.className = "trainer-avatar";
-
-      if (t.profile_pic) {
-        const img = document.createElement("img");
-        img.src = t.profile_pic;
-        img.alt = `${t.name} ${t.surname}`;
-        img.style.width = "100%";
-        img.style.height = "100%";
-        img.style.borderRadius = "50%";
-        img.style.objectFit = "cover";
-        avatar.appendChild(img);
-      } else {
-        const initials = `${(t.name || "").charAt(0)}${(t.surname || "")
-          .charAt(0)
-          .toUpperCase()}`;
-        avatar.textContent = initials || "TR";
-      }
-
-      const name = document.createElement("div");
-      name.className = "trainer-name";
-      name.textContent = `${t.name} ${t.surname}`;
-
-      const typeLabel = document.createElement("div");
-      typeLabel.className = "trainer-type";
-      typeLabel.textContent = t.type;
-      typeLabel.style.fontSize = "12px";
-      typeLabel.style.color = "#555";
-
-      card.appendChild(avatar);
-      card.appendChild(name);
-      card.appendChild(typeLabel);
-      grid.appendChild(card);
-    });
-
-    return trainers; // <-- vrati listu trenera
-  }
-
-  function highlightSelectedTrainer() {
-    if (!selectedTrainer) return;
-
-    document.querySelectorAll(".trainer-card").forEach((card) => {
-      const id = card.dataset.trainerId;
-      if (String(id) === String(selectedTrainer)) {
-        card.classList.add("selected");
-      } else {
-        card.classList.remove("selected");
-      }
-    });
-  }
-
-  // Funkcija za odabir trenera
-  // preserveSelection: if true, do not clear selectedDate/selectedTime or hide booking UI
-
-  function selectTrainer(trainerId, el, preserveSelection = false) {
-    // U EDIT MODU — NEMA TOGGLE LOGIKE
-    if (preserveSelection) {
-      selectedTrainer = trainerId;
-
-      document.querySelectorAll(".trainer-card").forEach((card) => {
-        card.classList.remove("selected");
-      });
-
-      if (el) el.classList.add("selected");
-
-      // Ako je odabrano vrijeme zauzeto za novog trenera – resetiraj samo vrijeme
-      if (
-        selectedDate &&
-        selectedTime &&
-        isTimeBlockedForTrainer(selectedTrainer, selectedDate, selectedTime)
-      ) {
-        selectedTime = null;
-      }
-
-      document.getElementById("calendarContainer").style.display = "block";
-      renderCalendar();
-      updateTimeSlots();
-      updateBookButton();
-
-      console.log("Edit mode – trener označen:", selectedTrainer);
-      return;
-    }
-    // Ako je kliknuti trener već odabran, odznači ga
-    if (selectedTrainer === trainerId) {
-      selectedTrainer = null;
-      if (el) el.classList.remove("selected");
-    } else {
-      selectedTrainer = trainerId;
-
-      // Ukloni "selected" sa svih kartica (sve kategorije)
-      document.querySelectorAll(".trainer-card").forEach((card) => {
-        card.classList.remove("selected");
-      });
-
-      // Označi kliknutog trenera
-      if (el) el.classList.add("selected");
-    }
-
-    /*   if (!preserveSelection) {
-    selectedDate = null;
-    selectedTime = null;
-    currentMonth = new Date();
-  } */
-
-    // Prikaži kalendar i resetiraj time slotove
-    document.getElementById("calendarContainer").style.display = "block";
-    renderCalendar();
-
-    document.getElementById("timeSlots").style.display = "none";
-    document.getElementById("bookFinal").style.display = "none";
-
-    console.log("Odabrani trener:", selectedTrainer);
-  }
-
-  //funkcija za kalendar i odabir datuma
-  function renderCalendar() {
-    const grid = document.getElementById("calendarGrid");
-    const monthYear = document.getElementById("monthYear");
-
-    const year = currentMonth.getFullYear();
-    const month = currentMonth.getMonth();
-
-    const trainer = allTrainers.find(
-      (t) => String(t.id) === String(selectedTrainer)
-    );
-
-    monthYear.textContent = new Date(year, month).toLocaleDateString("hr-HR", {
-      month: "long",
-      year: "numeric",
-    });
-
-    grid.innerHTML = "";
-
-    // Dodavanje oznaka dana u tjednu
-    dayLabels.forEach((label) => {
-      const div = document.createElement("div");
-      div.className = "calendar-day day-label";
-      div.textContent = label;
-      grid.appendChild(div);
-    });
-
-    // Prvi dan u mjesecu i broj dana u mjesecu
-    let firstDay = new Date(year, month, 1).getDay(); // 0-6, nedjelja=0
-    firstDay = firstDay === 0 ? 6 : firstDay - 1;
-
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    // Prazna polja prije prvog dana mjeseca
-    for (let i = 0; i < firstDay; i++) {
-      const div = document.createElement("div");
-      div.className = "calendar-day disabled";
-      grid.appendChild(div);
-    }
-
-    // Dohvaćanje dana u trenutnom mjesecu
-    for (let day = 1; day <= daysInMonth; day++) {
-      const date = new Date(year, month, day);
-      date.setHours(0, 0, 0, 0);
-
-      const dateStr = date.toISOString().split("T")[0];
-      const isPast = date < today;
-
-      const div = document.createElement("div");
-      div.className = "calendar-day";
-      div.textContent = day;
-
-      // Označi prošle dane
-      if (isPast) {
-        div.classList.add("disabled");
-      }
-
-      // Označi danas
-      if (date.getTime() === today.getTime()) {
-        div.classList.add("today");
-      }
-
-      // Označi odabrani datum
-      if (selectedDate === dateStr) {
-        div.classList.add("selected");
-      }
-
-      // Provjera za rehabilitacijski trening
-      let isDisabledForRehab = false;
-      if (trainer?.type === "rehabilitation" && !isRehabDay(dateStr)) {
-        isDisabledForRehab = true;
-        div.classList.add("disabled");
-      }
-
-      // Postavi onclick samo ako dan nije prošao i nije disabled
-      if (!isPast && !isDisabledForRehab) {
-        div.onclick = () => selectDate(dateStr);
-      }
-
-      grid.appendChild(div);
-    }
-  }
-
-  // Funkcija za odabir datuma
-  function selectDate(dateStr) {
-    selectedDate = dateStr;
-    selectedTime = null;
-    renderCalendar();
-    updateTimeSlots();
-    updateBookButton();
-    const trainer = allTrainers.find(
-      (t) => String(t.id) === String(selectedTrainer)
-    );
-    if (trainer?.type === "rehabilitation" && !isRehabDay(dateStr)) {
-      alert(
-        "Rehabilitacijski treninzi su dostupni samo ponedjeljkom, srijedom i petkom."
-      );
-      return;
-    }
-  }
-  // Funkcija za update dostupnih termina
-  function updateTimeSlots() {
-    const container = document.getElementById("timeSlots");
-    const grid = document.getElementById("timeGrid");
-
-    if (!selectedTrainer || !selectedDate) {
-      container.style.display = "none";
-      return;
-    }
-
-    container.style.display = "block";
-    grid.innerHTML = "";
-
-    const appointments = allAppointments; // sve rezervacije (trenere)
-    const userAppointments = allUserAppointments; // sve korisnikove rezervacije
-
-    // Trenerovi termini
-    const trainerAppointments = allAppointments.filter(
-      (a) => String(a.trainer_id) === String(selectedTrainer)
-    );
-
-    // Blokirana vremena za trenera
-    const bookedTimes = new Set();
-    appointments.forEach((a) => {
-      if (editingAppointmentId && String(a.id) === String(editingAppointmentId))
-        return;
-      if (String(a.trainer_id) === String(selectedTrainer)) {
+    let isTrainerBlocked = false;
+    allAppointments.forEach((a) => {
+      if (a.trainer_id == selectedTrainer) {
         const apptDate = new Date(a.scheduled_at);
-        const dateStr = apptDate.toISOString().split("T")[0];
-        if (dateStr === selectedDate) {
-          const time = apptDate.toTimeString().slice(0, 5);
-          bookedTimes.add(time);
-        }
-      }
-    });
-
-    // Funkcija za provjeru je li termin zaključan
-    function isAppointmentLockedFrontend(scheduledAt) {
-      const now = new Date();
-      const appt = new Date(scheduledAt);
-
-      if (appt <= now) return true;
-
-      const diffMs = appt - now;
-      const hours24 = 24 * 60 * 60 * 1000;
-      return diffMs < hours24;
-    }
-
-    // Funkcija za provjeru je li vrijeme blokirano za trenera
-
-    function isTimeBlockedForTrainer(trainerId, date, time) {
-      if (!trainerId || !date || !time) return false;
-
-      return allAppointments.some((a) => {
-        if (
-          editingAppointmentId &&
-          String(a.id) === String(editingAppointmentId)
-        )
-          return false;
-
-        const apptDate = new Date(a.scheduled_at);
-        const dateStr = apptDate.toISOString().split("T")[0];
-        const timeStr = apptDate.toTimeString().slice(0, 5);
-
-        return (
-          String(a.trainer_id) === String(trainerId) &&
-          dateStr === date &&
-          timeStr === time
-        );
-      });
-    }
-
-    // Blokirana vremena za korisnika
-    const userBookedTimes = new Set();
-    userAppointments.forEach((a) => {
-      if (editingAppointmentId && String(a.id) === String(editingAppointmentId))
-        return;
-      const apptDate = new Date(a.scheduled_at);
-      const dateStr = apptDate.toISOString().split("T")[0];
-      if (dateStr === selectedDate) {
-        const time = apptDate.toTimeString().slice(0, 5);
-        userBookedTimes.add(time);
-      }
-    });
-
-    // Buttoni za sve termine
-    allTimeSlots.forEach((time) => {
-      const btn = document.createElement("button");
-      btn.className = "time-btn";
-      btn.textContent = time;
-
-      const isTrainerBlocked = bookedTimes.has(time);
-      const isUserBlocked = userBookedTimes.has(time);
-
-      const candidate = new Date(`${selectedDate}T${time}:00`);
-      const now = new Date();
-
-      // Prošlost
-      let inPast = candidate < now;
-
-      // Razlika u milisekundama
-      let diffMs = candidate - now;
-
-      // Provjera manje od 24h, ali samo ako je isti ili idući dan
-      let lessThan24 = diffMs > 0 && diffMs < 24 * 60 * 60 * 1000;
-
-      // Ako editiramo i slot je originalni termin, ignoriraj blokadu
-      if (editingAppointmentId) {
-        const editingAppt =
-          (allUserAppointments || []).find(
-            (a) => String(a.id) === String(editingAppointmentId)
-          ) ||
-          (allAppointments || []).find(
-            (a) => String(a.id) === String(editingAppointmentId)
+        const year = apptDate.getFullYear();
+        const month = String(apptDate.getMonth() + 1).padStart(2, "0");
+        const day = String(apptDate.getDate()).padStart(2, "0");
+        const apptDateStr = `${year}-${month}-${day}`;
+        if (apptDateStr === selectedDate) {
+          const apptStart = apptDate;
+          const apptEnd = new Date(
+            apptStart.getTime() + (a.duration_minutes || 60) * 60000
           );
-        if (editingAppt) {
-          const editDt = new Date(editingAppt.scheduled_at);
-          if (editDt.toISOString() === candidate.toISOString()) {
-            inPast = false;
-            lessThan24 = false;
-          }
+          if (overlaps(slotStart, slotEnd, apptStart, apptEnd))
+            isTrainerBlocked = true;
         }
       }
-
-      // Determine disabled state
-      btn.disabled = isTrainerBlocked || isUserBlocked || inPast || lessThan24;
-
-      btn.classList.remove("past-slot", "less-than-24");
-      if (inPast) btn.classList.add("past-slot");
-      else if (lessThan24) btn.classList.add("less-than-24");
-
-      if (selectedTime === time) btn.classList.add("selected");
-      if (!btn.disabled) btn.onclick = () => selectTime(time);
-
-      // Title priority: user conflict > trainer conflict > past > <24h
-      if (isUserBlocked) {
-        btn.title = "Već imate termin u ovom vremenu";
-      } else if (isTrainerBlocked) {
-        btn.title = "Trener je zauzet u ovom terminu";
-      } else if (inPast) {
-        btn.title = "Ne možete rezervirati termin u prošlosti";
-      } else if (lessThan24) {
-        btn.title =
-          "Rezervacije i izmjene moraju biti najmanje 24 sata unaprijed";
-      } else {
-        btn.title = "";
-      }
-
-      if (selectedTime === time) btn.classList.add("selected");
-
-      grid.appendChild(btn);
     });
-  }
 
-  // Funkcija za odabir vremena i update buttona
-  function selectTime(time) {
-    selectedTime = time;
-    updateTimeSlots();
-    updateBookButton();
-  }
+    let isUserBlocked = false;
+    allUserAppointments.forEach((a) => {
+      const apptDate = new Date(a.scheduled_at);
+      const year = apptDate.getFullYear();
+      const month = String(apptDate.getMonth() + 1).padStart(2, "0");
+      const day = String(apptDate.getDate()).padStart(2, "0");
+      const apptDateStr = `${year}-${month}-${day}`;
+      if (apptDateStr === selectedDate) {
+        const apptStart = apptDate;
+        const apptEnd = new Date(
+          apptStart.getTime() + (a.duration_minutes || 60) * 60000
+        );
+        if (overlaps(slotStart, slotEnd, apptStart, apptEnd))
+          isUserBlocked = true;
+      }
+    });
 
-  function updateBookButton() {
-    const btn = document.getElementById("bookBtn");
-    const container = document.getElementById("bookFinal");
-    const cancelBtn = document.getElementById("cancelEditBtn");
-
-    // Update label depending on edit mode
-    btn.textContent = editingAppointmentId
-      ? "Spremi promjene"
-      : "Rezerviraj termin";
-
-    // show/hide cancel button when in edit mode
-    if (cancelBtn) {
-      cancelBtn.style.display = editingAppointmentId ? "inline-block" : "none";
-    }
-
-    if (!selectedTrainer || !selectedDate || !selectedTime) {
-      btn.disabled = true;
+    btn.disabled = isTrainerBlocked || isUserBlocked;
+    if (isUserBlocked) {
+      btn.title = "Već imate termin u ovom periodu";
+    } else if (isTrainerBlocked) {
+      btn.title = "Trener je zauzet u ovom periodu";
+    } else {
       btn.title = "";
-      container.style.display =
-        selectedTrainer && selectedDate ? "block" : "none";
-      return;
     }
 
+    if (selectedTime === time) {
+      btn.classList.add("selected");
+    }
+
+    if (!btn.disabled) {
+      btn.onclick = () => selectTime(time);
+    }
+
+    grid.appendChild(btn);
+  });
+}
+
+function selectTime(time) {
+  selectedTime = time;
+  updateTimeSlots();
+  updateBookButton();
+}
+
+function updateBookButton() {
+  const btn = document.getElementById("bookBtn");
+  const container = document.getElementById("bookFinal");
+
+  if (selectedTrainer && selectedDate && selectedTime && selectedServiceId) {
     container.style.display = "block";
 
-    // Provjera konflikta u lokalnom array-u
+    const selectedService = services.find((s) => s.id === selectedServiceId);
+    const selDuration = selectedService?.duration || 60;
+    const slotStart = new Date(`${selectedDate}T${selectedTime}:00`);
+    const slotEnd = new Date(slotStart.getTime() + selDuration * 60000);
     const hasConflict = allUserAppointments.some((a) => {
-      const dateStr = new Date(a.scheduled_at).toISOString().split("T")[0];
-      const timeStr = new Date(a.scheduled_at).toTimeString().slice(0, 5);
-      return dateStr === selectedDate && timeStr === selectedTime;
+      const apptStart = new Date(a.scheduled_at);
+      const apptEnd = new Date(
+        apptStart.getTime() + (a.duration_minutes || 60) * 60000
+      );
+      return apptStart < slotEnd && slotStart < apptEnd;
     });
+
     if (hasConflict) {
       btn.disabled = true;
       btn.title = "Već imate termin u ovom vremenu";
@@ -1074,473 +1059,13 @@ function updateTimeSlots() {
       btn.style.opacity = "1";
       btn.style.cursor = "pointer";
     }
-  }
-
-  function fmt(dt) {
-    const d = new Date(dt);
-    return d.toLocaleString("hr-HR");
-  }
-
-  function startEditAppointment(id) {
-    console.log("startEditAppointment called with id:", id);
-    try {
-      const appt = allUserAppointments.find((a) => String(a.id) === String(id));
-      if (!appt) return alert("Termin nije pronađen");
-
-      editingAppointmentId = appt.id;
-
-      // Set selected trainer and highlight card
-      selectedTrainer = appt.trainer_id;
-      highlightSelectedTrainer();
-      document.getElementById("calendarContainer").style.display = "block";
-
-      // 2️⃣ datum
-      const dt = new Date(appt.scheduled_at);
-      const year = dt.getFullYear();
-      const month = String(dt.getMonth() + 1).padStart(2, "0");
-      const day = String(dt.getDate()).padStart(2, "0");
-      selectedDate = `${year}-${month}-${day}`;
-      currentMonth = new Date(year, dt.getMonth(), 1);
-      renderCalendar();
-
-      // 3️⃣ vrijeme
-      selectedTime = dt.toTimeString().slice(0, 5);
-      document.getElementById("timeSlots").style.display = "block";
-      updateTimeSlots();
-      updateBookButton();
-
-      // Scroll into view the booking area
-      document
-        .getElementById("bookFinal")
-        ?.scrollIntoView({ behavior: "smooth" });
-    } catch (e) {
-      console.error("startEditAppointment error", e);
-      alert("Greška prilikom pokretanja uređivanja. Vidi konzolu.");
-    }
-  }
-  // Ensure function is available for inline onclick handlers
-  window.startEditAppointment = startEditAppointment;
-
-  function cancelEdit() {
-    // exit edit mode and reset selection so user can make a new reservation
-    editingAppointmentId = null;
-    selectedTrainer = null;
-    selectedDate = null;
-    selectedTime = null;
-
-    // clear UI selections
-    document
-      .querySelectorAll(".trainer-card")
-      .forEach((c) => c.classList.remove("selected"));
-    document.getElementById("calendarContainer").style.display = "none";
-    document.getElementById("timeSlots").style.display = "none";
-
-    updateTimeSlots();
-    updateBookButton();
-  }
-  window.cancelEdit = cancelEdit;
-
-  async function loadAppointments() {
-    try {
-      console.log("Fetching appointments...");
-      const res = await get("/api/appointments");
-
-      // Normaliziraj odgovor u array
-      allUserAppointments = Array.isArray(res)
-        ? res
-        : Array.isArray(res.appointments)
-        ? res.appointments
-        : [];
-
-      console.log("Loaded user appointments:", allUserAppointments);
-      renderFilteredUserAppointments();
-      updateTimeSlots();
-      updateBookButton();
-    } catch (e) {
-      console.error("Error loading appointments:", e);
-    }
-  }
-  //funkcija za provjeru je li termin zaključan
-  function isAppointmentLocked(scheduledAt) {
-    const now = new Date();
-    const apptDate = new Date(scheduledAt);
-
-    // prošlost
-    if (apptDate <= now) return true;
-
-    // manje od 24h
-    const diffMs = apptDate - now;
-    const hours24 = 24 * 60 * 60 * 1000;
-
-    return diffMs < hours24;
-  }
-
-  function renderFilteredUserAppointments() {
-    const wrap = document.getElementById("apptList");
-    let list = [...allUserAppointments];
-
-    console.log("Rendering with list:", list);
-
-    // Apply date filter
-    if (userFilterDate) {
-      list = list.filter((a) => {
-        const apptDate = new Date(a.scheduled_at);
-        const filterDate = new Date(userFilterDate);
-        return apptDate.toDateString() === filterDate.toDateString();
-      });
-    }
-
-    // Sortiranje termina po datumu i vremenu
-    list.sort((a, b) => {
-      const timeA = new Date(a.scheduled_at).getTime();
-      const timeB = new Date(b.scheduled_at).getTime();
-      return timeA - timeB;
-    });
-
-    if (!list || list.length === 0) {
-      wrap.textContent = "Još nema termina.";
-      return;
-    }
-    const rows = list
-      .map((a) => {
-        const d = new Date(a.scheduled_at);
-        const dateOnly = d.toLocaleDateString("hr-HR");
-        const timeOnly = d.toTimeString().slice(0, 5);
-        const locked = isAppointmentLocked(a.scheduled_at);
-        return `
-      <tr>
-        <td>${dateOnly}</td>
-        <td>${timeOnly}</td>
-        <td>${a.trainer_name} ${a.trainer_surname}</td>
-        <td>
-          ${
-            locked
-              ? `<span class="locked-text">Termin zaključan</span>`
-              : `
-                  <button class="edit-btn" onclick="startEditAppointment(${a.id})">Uredi</button>
-                  <button class="del-btn" onclick="showDeleteConfirm(${a.id}, 'user')">Obriši</button>
-                `
-          }
-        </td>
-      </tr>`;
-      })
-      .join("");
-    wrap.innerHTML = `<table><thead><tr><th>Datum</th><th>Vrijeme</th><th>Trener</th><th>Radnja</th></tr></thead><tbody>${rows}</tbody></table>`;
-  }
-
-  //funkcije za admin panel
-  async function loadAdminAppointments() {
-    if (!isAdmin) return;
-    allAdminAppointments = await get("/api/admin/appointments");
-    if (!Array.isArray(allAdminAppointments)) {
-      allAdminAppointments = allAdminAppointments.appointments || [];
-    }
-    renderFilteredAdminAppointments();
-  }
-  //funkcija za prikaz admin termina s filtriranjem
-  function renderFilteredAdminAppointments() {
-    const wrap = document.getElementById("adminApptList");
-    if (!Array.isArray(allAdminAppointments)) allAdminAppointments = [];
-    let list = [...allAdminAppointments];
-    // trener filter
-    if (adminFilterTrainer) {
-      list = list.filter((a) => a.trainer_id == adminFilterTrainer);
-    }
-
-    // datum filter
-    if (adminFilterDate) {
-      list = list.filter((a) => {
-        const apptDate = new Date(a.scheduled_at);
-        const filterDate = new Date(adminFilterDate);
-        return apptDate.toDateString() === filterDate.toDateString();
-      });
-    }
-
-    if (!list || list.length === 0) {
-      wrap.textContent = "Nema termina koji odgovaraju filtrima.";
-      return;
-    }
-
-    const rows = list
-      .map((a) => {
-        return `
-        <tr>
-          <td>${fmt(a.scheduled_at)}</td>
-          <td>${a.user_name} ${a.user_surname} (${a.user_email})</td>
-          <td>${a.trainer_name} ${a.trainer_surname}</td>
-          <td><button class="del-btn" onclick="showDeleteConfirm(${
-            a.id
-          }, 'admin')">Obriši</button></td>
-        </tr>`;
-      })
-      .join("");
-    wrap.innerHTML = `<table><thead><tr><th>Vrijeme</th><th>Korisnik</th><th>Trener</th><th>Radnja</th></tr></thead><tbody>${rows}</tbody></table>`;
-  }
-  //funkcija za popunjavanje dropdowna trenera u admin panelu
-  async function populateAdminTrainerFilter() {
-    const trainers = await get("/api/trainers");
-    const select = document.getElementById("adminTrainerFilter");
-    trainers.forEach((t) => {
-      const opt = document.createElement("option");
-      opt.value = t.id;
-      opt.textContent = `${t.name} ${t.surname}`;
-      select.appendChild(opt);
-    });
-  }
-  //funkcija za prikaz potvrde brisanja
-  function showDeleteConfirm(id, type) {
-    console.log("showDeleteConfirm called with ID:", id, "Type:", type);
-    pendingDeleteId = id;
-    pendingDeleteType = type;
-    showModal(
-      "Brisanje termina",
-      "Jeste li sigurni da želite obrisati ovaj termin?",
-      "error-modal",
-      true,
-      true
-    );
-  }
-  //event listeners za navigaciju kalendarom, rezervaciju termina i odjavu
-  document.getElementById("prevMonth").addEventListener("click", () => {
-    currentMonth.setMonth(currentMonth.getMonth() - 1);
-    renderCalendar();
-    selectedDate = null;
-    selectedTime = null;
-    updateTimeSlots();
-    updateBookButton();
-  });
-  //navigacija na sljedeci mjesec
-  document.getElementById("nextMonth").addEventListener("click", () => {
-    currentMonth.setMonth(currentMonth.getMonth() + 1);
-    renderCalendar();
-    selectedDate = null;
-    selectedTime = null;
-    updateTimeSlots();
-    updateBookButton();
-  });
-  //rezervacija termina
-  document.getElementById("bookBtn").addEventListener("click", async () => {
-    const err = document.getElementById("bookErr");
-    const success = document.getElementById("bookSuccess");
-    err.textContent = "";
-    success.textContent = "";
-
-    try {
-      if (!selectedTrainer || !selectedDate || !selectedTime) {
-        throw new Error("Molimo odaberite trenera, datum i vrijeme");
-      }
-
-      // Provjera konflikata u array-u (ignoriraj termin koji se uređuje)
-      const conflictExists = allUserAppointments.some((a) => {
-        if (
-          editingAppointmentId &&
-          String(a.id) === String(editingAppointmentId)
-        )
-          return false;
-        const appt = new Date(a.scheduled_at);
-        const dateStr = appt.toISOString().split("T")[0];
-        const timeStr = appt.toTimeString().slice(0, 5);
-        return dateStr === selectedDate && timeStr === selectedTime;
-      });
-
-      if (conflictExists) {
-        throw new Error("Već imate termin u odabrano vrijeme i datum");
-      }
-
-      // Konvertiraj u ISO format
-      const iso = new Date(`${selectedDate}T${selectedTime}:00`).toISOString();
-
-      if (editingAppointmentId) {
-        // Update existing appointment
-        const updated = await put(`/api/appointments/${editingAppointmentId}`, {
-          trainerId: selectedTrainer,
-          scheduledAt: iso,
-        });
-
-        // Update local arrays
-        const idxUser = allUserAppointments.findIndex(
-          (a) => String(a.id) === String(editingAppointmentId)
-        );
-        if (idxUser > -1) allUserAppointments[idxUser] = updated;
-        const idxAll = allAppointments.findIndex(
-          (a) => String(a.id) === String(editingAppointmentId)
-        );
-        if (idxAll > -1) allAppointments[idxAll] = updated;
-
-        updateTimeSlots();
-        renderFilteredUserAppointments();
-        updateBookButton();
-
-        success.textContent = "Termin je uspješno ažuriran!";
-        setTimeout(() => {
-          success.textContent = "";
-        }, 2000);
-
-        editingAppointmentId = null;
-        // restore button label and update cancel visibility
-        document.getElementById("bookBtn").textContent = "Rezerviraj termin";
-        updateBookButton();
-      } else {
-        // Pošalji zahtjev za novi termin
-        const newAppt = await post("/api/appointments", {
-          trainerId: selectedTrainer,
-          scheduledAt: iso,
-        });
-
-        // Ažuriraj lokalne podatke
-        allUserAppointments.push(newAppt);
-        allAppointments.push(newAppt);
-
-        updateTimeSlots();
-        renderFilteredUserAppointments();
-        updateBookButton();
-
-        success.textContent = "Termin je uspješno rezerviran!";
-        setTimeout(() => {
-          success.textContent = "";
-        }, 2000);
-      }
-    } catch (e) {
-      err.textContent = e.message;
-    }
-  });
-  //odjava korisnika
-  document.getElementById("logoutBtn").addEventListener("click", async () => {
-    await post("/api/logout", {});
-    location.href = "/";
-  });
-
-  // User filter event listeners
-  document.getElementById("userDateFilter")?.addEventListener("change", (e) => {
-    userFilterDate = e.target.value;
-    renderFilteredUserAppointments();
-  });
-  // Clear user filters
-  document
-    .getElementById("clearUserFiltersBtn")
-    ?.addEventListener("click", () => {
-      userFilterDate = "";
-      document.getElementById("userDateFilter").value = "";
-      renderFilteredUserAppointments();
-    });
-
-  // Admin filter event listeners
-  document
-    .getElementById("adminTrainerFilter")
-    ?.addEventListener("change", (e) => {
-      adminFilterTrainer = e.target.value;
-      renderFilteredAdminAppointments();
-    });
-  // Admin date filter
-  document
-    .getElementById("adminDateFilter")
-    ?.addEventListener("change", (e) => {
-      adminFilterDate = e.target.value;
-      renderFilteredAdminAppointments();
-    });
-  // Clear admin filters
-  document.getElementById("clearFiltersBtn")?.addEventListener("click", () => {
-    adminFilterTrainer = "";
-    adminFilterDate = "";
-    document.getElementById("adminTrainerFilter").value = "";
-    document.getElementById("adminDateFilter").value = "";
-    renderFilteredAdminAppointments();
-  });
-
-  // init
-  // init
-  (async () => {
-    try {
-      console.log("Loading user info...");
-      const me = await get("/api/me");
-      console.log("User info loaded:", me);
-      isAdmin = me.is_admin;
-
-      if (isAdmin) {
-        console.log("Loading admin panel...");
-        document.getElementById("pageTitle").textContent = "Admin panel";
-        document.getElementById("bookingPanel").hidden = true;
-        document.getElementById("userApptPanel").hidden = true;
-        document.getElementById("adminPanel").hidden = false;
-        await populateAdminTrainerFilter();
-        await loadAdminAppointments();
-        console.log("Admin panel loaded");
-      } else {
-        console.log("Loading user panel...");
-
-        // Učitaj sve termine
-        await loadAllAppointmentsForFiltering();
-        console.log("All appointments loaded");
-
-        // Dohvati trenere i spremi ih u lokalnu varijablu
-        const trainers = await loadTrainers(); // <-- ovdje definiramo varijablu
-        allTrainers = trainers; // globalno
-        await loadAppointments();
-        highlightSelectedTrainer();
-
-        currentMonth = new Date(); // inicijalni mjesec
-        renderCalendar();
-        document.getElementById("calendarContainer").style.display = "block";
-
-        if (selectedTrainer && selectedDate) {
-          updateTimeSlots();
-        }
-
-        await loadAppointments();
-        console.log("User appointments loaded");
-      }
-    } catch (e) {
-      console.error("Init error:", e);
-      alert("Error loading data: " + (e.message || e));
-    }
-  })();
-}
-
-// Funkcija za odabir vremena i update buttona
-function selectTime(time) {
-  selectedTime = time;
-  updateTimeSlots();
-  updateBookButton();
-}
-
-function updateBookButton() {
-  const btn = document.getElementById("bookBtn");
-  const container = document.getElementById("bookFinal");
-  const cancelBtn = document.getElementById("cancelEditBtn");
-
-  // Update label depending on edit mode
-  btn.textContent = editingAppointmentId
-    ? "Spremi promjene"
-    : "Rezerviraj termin";
-
-  // show/hide cancel button when in edit mode
-  if (cancelBtn) {
-    cancelBtn.style.display = editingAppointmentId ? "inline-block" : "none";
-  }
-
-  if (!selectedTrainer || !selectedDate || !selectedTime) {
-    btn.disabled = true;
-    btn.title = "";
-    container.style.display =
-      selectedTrainer && selectedDate ? "block" : "none";
-    return;
-  }
-
-  container.style.display = "block";
-
-  // Provjera konflikta u lokalnom array-u
-  const hasConflict = allUserAppointments.some((a) => {
-    const dateStr = new Date(a.scheduled_at).toISOString().split("T")[0];
-    const timeStr = new Date(a.scheduled_at).toTimeString().slice(0, 5);
-    return dateStr === selectedDate && timeStr === selectedTime;
-  });
-  if (hasConflict) {
-    btn.disabled = true;
-    btn.title = "Već imate termin u ovom vremenu";
-    btn.style.opacity = "0.5";
-    btn.style.cursor = "not-allowed";
   } else {
-    btn.disabled = false;
+    if (selectedTrainer && selectedDate && selectedServiceId) {
+      container.style.display = "block";
+    } else {
+      container.style.display = "none";
+    }
+    btn.disabled = true;
     btn.title = "";
     btn.style.opacity = "1";
     btn.style.cursor = "pointer";
@@ -1552,109 +1077,56 @@ function fmt(dt) {
   return d.toLocaleString("hr-HR");
 }
 
-function startEditAppointment(id) {
-  console.log("startEditAppointment called with id:", id);
-  try {
-    const appt = allUserAppointments.find((a) => String(a.id) === String(id));
-    if (!appt) return alert("Termin nije pronađen");
-
-    editingAppointmentId = appt.id;
-
-    // 1️⃣ datum i vrijeme
-    const dt = new Date(appt.scheduled_at);
-    const year = dt.getFullYear();
-    const month = String(dt.getMonth() + 1).padStart(2, "0");
-    const day = String(dt.getDate()).padStart(2, "0");
-
-    selectedDate = `${year}-${month}-${day}`;
-    selectedTime = dt.toTimeString().slice(0, 5);
-    currentMonth = new Date(year, dt.getMonth(), 1);
-
-    // 2️⃣ trener
-    selectedTrainer = appt.trainer_id;
-    highlightSelectedTrainer();
-
-    // 3️⃣ prikaži kalendar i termine
-    document.getElementById("calendarContainer").style.display = "block";
-    renderCalendar();
-    document.getElementById("timeSlots").style.display = "block";
-
-    // 4️⃣ update buttoni i slotovi
-    updateTimeSlots();
-    updateBookButton();
-
-    // 5️⃣ scroll
-    document
-      .getElementById("bookFinal")
-      ?.scrollIntoView({ behavior: "smooth" });
-  } catch (e) {
-    console.error("startEditAppointment error", e);
-    alert("Greška prilikom pokretanja uređivanja. Vidi konzolu.");
-  }
-}
-
-// Ensure function is available for inline onclick handlers
-window.startEditAppointment = startEditAppointment;
-
-function cancelEdit() {
-  // exit edit mode and reset selection so user can make a new reservation
-  editingAppointmentId = null;
-  selectedTrainer = null;
-  selectedDate = null;
-  selectedTime = null;
-
-  // clear UI selections
-  document
-    .querySelectorAll(".trainer-card")
-    .forEach((c) => c.classList.remove("selected"));
-  document.getElementById("calendarContainer").style.display = "none";
-  document.getElementById("timeSlots").style.display = "none";
-
-  updateTimeSlots();
-  updateBookButton();
-}
-window.cancelEdit = cancelEdit;
-
 async function loadAppointments() {
   try {
-    console.log("Fetching appointments...");
-    const res = await get("/api/appointments");
-
-    // Normaliziraj odgovor u array
-    allUserAppointments = Array.isArray(res)
-      ? res
-      : Array.isArray(res.appointments)
-      ? res.appointments
-      : [];
-
-    console.log("Loaded user appointments:", allUserAppointments);
+    console.log("Fetching appointments from /api/appointments...");
+    const data = await get("/api/appointments");
+    console.log("Fetched appointments count:", data ? data.length : 0);
+    console.log("Fetched appointments:", data);
+    allUserAppointments = data || [];
+    console.log("allUserAppointments is now:", allUserAppointments);
+    console.log("About to call renderFilteredUserAppointments...");
     renderFilteredUserAppointments();
-    updateTimeSlots();
-    updateBookButton();
+    console.log("renderFilteredUserAppointments completed");
   } catch (e) {
     console.error("Error loading appointments:", e);
+    document.getElementById("apptList").textContent =
+      "Greška pri učitavanju: " + e.message;
   }
-}
-//funkcija za provjeru je li termin zaključan
-function isAppointmentLocked(scheduledAt) {
-  const now = new Date();
-  const apptDate = new Date(scheduledAt);
-
-  // prošlost
-  if (apptDate <= now) return true;
-
-  // manje od 24h
-  const diffMs = apptDate - now;
-  const hours24 = 24 * 60 * 60 * 1000;
-
-  return diffMs < hours24;
 }
 
 function renderFilteredUserAppointments() {
   const wrap = document.getElementById("apptList");
-  let list = [...allUserAppointments];
+  console.log("renderFilteredUserAppointments: wrap element:", wrap);
 
-  console.log("Rendering with list:", list);
+  if (!wrap) {
+    console.error("apptList element not found!");
+    return;
+  }
+
+  let list = [...allUserAppointments];
+  console.log("Starting with list of", list.length, "appointments");
+
+  // Filter only future appointments
+  const now = new Date();
+  console.log("Current date/time:", now);
+  list = list.filter((a) => {
+    const apptTime = new Date(a.scheduled_at);
+    const isFuture = apptTime > now;
+    console.log(
+      `  Appointment ${a.id}: ${
+        a.scheduled_at
+      } (${apptTime}) vs now (${now}) = ${isFuture ? "FUTURE" : "PAST"}`
+    );
+    return isFuture;
+  });
+
+  console.log("After filtering future: list.length =", list.length);
+
+  // Apply service filter
+  if (userFilterService) {
+    list = list.filter((a) => a.service_name === userFilterService);
+  }
 
   // Apply date filter
   if (userFilterDate) {
@@ -1665,64 +1137,71 @@ function renderFilteredUserAppointments() {
     });
   }
 
-  // Sortiranje termina po datumu i vremenu
+  // Sort by time
   list.sort((a, b) => {
     const timeA = new Date(a.scheduled_at).getTime();
     const timeB = new Date(b.scheduled_at).getTime();
     return timeA - timeB;
   });
 
+  console.log("Final list.length after filters and sort:", list.length);
+
   if (!list || list.length === 0) {
-    wrap.textContent = "Još nema termina.";
+    console.log("No appointments to display, showing message");
+    wrap.textContent = "Još nema budućih termina.";
     return;
   }
+
+  console.log("Building HTML table for", list.length, "appointments");
   const rows = list
     .map((a) => {
-      const d = new Date(a.scheduled_at);
-      const dateOnly = d.toLocaleDateString("hr-HR");
-      const timeOnly = d.toTimeString().slice(0, 5);
-      const locked = isAppointmentLocked(a.scheduled_at);
+      const scheduledAt = new Date(a.scheduled_at);
+      const now = new Date();
+      const hoursUntilAppt = (scheduledAt - now) / (1000 * 60 * 60);
+      const canCancel = hoursUntilAppt >= 24;
+
+      const deleteButton = canCancel
+        ? `<button class="del-btn" onclick="showDeleteConfirm(${a.id}, 'user')">Obriši</button>`
+        : `<button class="del-btn" disabled title="Ne možete otkazati termin manje od 24 sata prije početka" style="opacity: 0.5; cursor: not-allowed;">Obriši</button>`;
+
       return `
-      <tr>
-        <td>${dateOnly}</td>
-        <td>${timeOnly}</td>
-        <td>${a.trainer_name} ${a.trainer_surname}</td>
-        <td>
-          ${
-            locked
-              ? `<span class="locked-text">Termin zaključan</span>`
-              : `
-                  <button class="edit-btn" onclick="startEditAppointment(${a.id})">Uredi</button>
-                  <button class="del-btn" onclick="showDeleteConfirm(${a.id}, 'user')">Obriši</button>
-                `
-          }
-        </td>
-      </tr>`;
+          <tr>
+            <td>${fmt(a.scheduled_at)}</td>
+            <td>${a.service_name || "N/A"}</td>
+            <td>${a.trainer_name} ${a.trainer_surname}</td>
+            <td class="action-cell">
+              <button class="confirm-btn" onclick="showEditModal(${
+                a.id
+              })">Uredi</button>
+              ${deleteButton}
+            </td>
+          </tr>
+        `;
     })
     .join("");
-  wrap.innerHTML = `<table><thead><tr><th>Datum</th><th>Vrijeme</th><th>Trener</th><th>Radnja</th></tr></thead><tbody>${rows}</tbody></table>`;
+
+  const html = `<table><thead><tr><th>Vrijeme</th><th>Usluga</th><th>Trener</th><th>Radnja</th></tr></thead><tbody>${rows}</tbody></table>`;
+  console.log("Setting innerHTML with table HTML");
+  wrap.innerHTML = html;
+  console.log("innerHTML set, table should be visible");
 }
 
-//funkcije za admin panel
 async function loadAdminAppointments() {
   if (!isAdmin) return;
   allAdminAppointments = await get("/api/admin/appointments");
-  if (!Array.isArray(allAdminAppointments)) {
-    allAdminAppointments = allAdminAppointments.appointments || [];
-  }
   renderFilteredAdminAppointments();
 }
-//funkcija za prikaz admin termina s filtriranjem
+
 function renderFilteredAdminAppointments() {
   const wrap = document.getElementById("adminApptList");
-  if (!Array.isArray(allAdminAppointments)) allAdminAppointments = [];
   let list = [...allAdminAppointments];
-  // trener filter
+
+  // Apply trainer filter
   if (adminFilterTrainer) {
     list = list.filter((a) => a.trainer_id == adminFilterTrainer);
   }
 
-  // datum filter
+  // Apply date filter
   if (adminFilterDate) {
     list = list.filter((a) => {
       const apptDate = new Date(a.scheduled_at);
@@ -1738,20 +1217,19 @@ function renderFilteredAdminAppointments() {
 
   const rows = list
     .map((a) => {
-      return `
-        <tr>
-          <td>${fmt(a.scheduled_at)}</td>
-          <td>${a.user_name} ${a.user_surname} (${a.user_email})</td>
-          <td>${a.trainer_name} ${a.trainer_surname}</td>
-          <td><button class="del-btn" onclick="showDeleteConfirm(${
-            a.id
-          }, 'admin')">Obriši</button></td>
-        </tr>`;
+      return `<tr>
+            <td>${fmt(a.scheduled_at)}</td>
+            <td>${a.user_name} ${a.user_surname} (${a.user_email})</td>
+            <td>${a.trainer_name} ${a.trainer_surname}</td>
+            <td><button class="del-btn" onclick="showDeleteConfirm(${
+              a.id
+            }, 'admin')">Obriši</button></td>
+          </tr>`;
     })
     .join("");
   wrap.innerHTML = `<table><thead><tr><th>Vrijeme</th><th>Korisnik</th><th>Trener</th><th>Radnja</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
-//funkcija za popunjavanje dropdowna trenera u admin panelu
+
 async function populateAdminTrainerFilter() {
   const trainers = await get("/api/trainers");
   const select = document.getElementById("adminTrainerFilter");
@@ -1762,7 +1240,304 @@ async function populateAdminTrainerFilter() {
     select.appendChild(opt);
   });
 }
-//funkcija za prikaz potvrde brisanja
+
+async function populateTrainerWorkHoursSelect() {
+  const select = document.getElementById("trainerWorkHoursSelect");
+  if (!select) return;
+  select.innerHTML = '<option value="">Odaberite trenera...</option>';
+  const trainers = allTrainers.length
+    ? allTrainers
+    : await get("/api/trainers");
+  trainers.forEach((t) => {
+    const opt = document.createElement("option");
+    opt.value = t.id;
+    opt.textContent = `${t.name} ${t.surname}`;
+    select.appendChild(opt);
+  });
+}
+
+async function refreshAdminReserveTimes() {
+  const timeSelect = document.getElementById("adminReserveTimeSelect");
+  if (!timeSelect) return;
+  const trainerId = document.getElementById("adminReserveTrainerSelect")?.value;
+  const serviceId = document.getElementById("adminReserveServiceSelect")?.value;
+  const dateVal = document.getElementById("adminReserveDate")?.value || "";
+  const selectedService = services.find((s) => s.id === serviceId);
+  const duration = selectedService?.duration || 60;
+  const hours = await getEffectiveTrainerHours(trainerId, dateVal);
+  adminReserveHours = hours;
+  timeSelect.innerHTML = '<option value="">Odaberite vrijeme...</option>';
+  for (let h = hours.open_hour; h <= hours.close_hour; h++) {
+    const label = `${padHour(h)}:00`;
+    const opt = document.createElement("option");
+    opt.value = label;
+    opt.textContent = `${label} (${duration} min)`;
+    timeSelect.appendChild(opt);
+  }
+}
+
+function setTrainerWorkHourInputs(hours) {
+  const openInput = document.getElementById("trainerWorkOpen");
+  const closeInput = document.getElementById("trainerWorkClose");
+  if (openInput && hours) openInput.value = `${padHour(hours.open_hour)}:00`;
+  if (closeInput && hours) closeInput.value = `${padHour(hours.close_hour)}:00`;
+}
+
+async function fetchTrainerAdminHours(trainerId, dateVal = "") {
+  return get(
+    `/api/admin/trainer/${trainerId}/work-hours${
+      dateVal ? `?date=${encodeURIComponent(dateVal)}` : ""
+    }`
+  );
+}
+
+function renderTrainerHoursList(data) {
+  const container = document.getElementById("trainerWorkHoursList");
+  if (!container) return;
+  if (!data) {
+    container.innerHTML = "";
+    return;
+  }
+  const { base, overrides, effective } = data;
+  const parts = [];
+  if (effective) {
+    parts.push(
+      `<div style="padding:8px; background:#e8f5e9; border-radius:6px; margin:8px 0;"><strong>Aktivno (${
+        effective.source || "n/a"
+      }):</strong> ${padHour(effective.open_hour)}:00 - ${padHour(
+        effective.close_hour
+      )}:00</div>`
+    );
+  }
+  if (base) {
+    parts.push(
+      `<div style="padding:8px; background:#f0f4c3; border-radius:6px; margin:8px 0;"><strong>Osnovno:</strong> ${padHour(
+        base.open_hour
+      )}:00 - ${padHour(base.close_hour)}:00</div>`
+    );
+  }
+  if (overrides && overrides.length) {
+    const rows = overrides
+      .map((o) => {
+        const dateRange =
+          o.start_date === o.end_date
+            ? o.start_date
+            : `${o.start_date} → ${o.end_date}`;
+        return `<div style="padding:8px; background:#e3f2fd; border-left:4px solid #2d5f3f; margin:6px 0; border-radius:4px;">${dateRange}: <strong>${padHour(
+          o.open_hour
+        )}:00 - ${padHour(o.close_hour)}:00</strong></div>`;
+      })
+      .join("");
+    parts.push(
+      `<div style="margin:12px 0;"><strong>Iznimke:</strong>${rows}</div>`
+    );
+  }
+  container.innerHTML = parts.join("");
+}
+
+async function loadTrainerWorkHoursForAdmin(trainerId) {
+  const status = document.getElementById("trainerWorkHoursStatus");
+  const dateVal = document.getElementById("trainerWorkStartDate")?.value || "";
+  if (!trainerId) {
+    setTrainerWorkHourInputs(defaultWorkHours);
+    renderTrainerHoursList(null);
+    if (status)
+      status.textContent =
+        "Odaberite trenera za prikaz radnog vremena (prikazano globalno).";
+    return;
+  }
+  if (status) status.textContent = "Učitavam...";
+  try {
+    const detail = await fetchTrainerAdminHours(trainerId, dateVal);
+    const hours = detail?.effective || detail?.base || null;
+    if (hours && hours.open_hour !== undefined) {
+      setTrainerWorkHourInputs(hours);
+      if (status) status.textContent = "Prikazano radno vrijeme trenera.";
+    } else {
+      setTrainerWorkHourInputs(defaultWorkHours);
+      if (status)
+        status.textContent =
+          "Nije postavljeno radno vrijeme; koristi se globalno.";
+    }
+    renderTrainerHoursList(detail);
+  } catch (e) {
+    if (status) status.textContent = e.message || "Greška pri učitavanju.";
+  }
+}
+
+async function saveTrainerWorkHours() {
+  const trainerId = document.getElementById("trainerWorkHoursSelect")?.value;
+  const startDate = document.getElementById("trainerWorkStartDate")?.value;
+  const openVal = document.getElementById("trainerWorkOpen")?.value;
+  const closeVal = document.getElementById("trainerWorkClose")?.value;
+  const status = document.getElementById("trainerWorkHoursStatus");
+  if (status) status.textContent = "";
+  if (!trainerId) {
+    if (status) status.textContent = "Odaberite trenera.";
+    return;
+  }
+  if (!openVal || !closeVal) {
+    if (status) status.textContent = "Unesite početak i kraj.";
+    return;
+  }
+  const openHour = Number(openVal.split(":")[0]);
+  const closeHour = Number(closeVal.split(":")[0]);
+  try {
+    if (startDate) {
+      const endDate = startDate;
+      await put("/api/admin/trainer-work-hours-range", {
+        trainerId,
+        startDate,
+        endDate,
+        openHour,
+        closeHour,
+      });
+      if (status) status.textContent = "Spremljeno za odabrani datum.";
+    } else {
+      await put("/api/admin/trainer-work-hours", {
+        trainerId,
+        openHour,
+        closeHour,
+      });
+      if (status) status.textContent = "Spremljeno (osnovno radno vrijeme).";
+    }
+    // Refresh booking hours if this trainer is currently selected
+    if (selectedTrainer && Number(selectedTrainer) === Number(trainerId)) {
+      await applyTrainerHours(selectedTrainer, selectedDate || "");
+    }
+    await refreshAdminReserveTimes();
+  } catch (e) {
+    if (status) status.textContent = e.message || "Greška pri spremanju.";
+  }
+}
+
+async function populateAdminReservationSelects() {
+  // Populate clients
+  try {
+    const clients = await get("/api/admin/clients");
+    const clientSelect = document.getElementById("adminClientSelect");
+    if (clientSelect) {
+      clients.forEach((c) => {
+        const opt = document.createElement("option");
+        opt.value = c.id;
+        opt.textContent = `${c.name} ${c.surname} (${c.email})`;
+        clientSelect.appendChild(opt);
+      });
+    }
+  } catch (e) {
+    console.error("Error loading clients:", e);
+  }
+
+  // Populate trainers
+  try {
+    const trainers = await get("/api/trainers");
+    const trainerSelect = document.getElementById("adminReserveTrainerSelect");
+    if (trainerSelect) {
+      trainers.forEach((t) => {
+        const opt = document.createElement("option");
+        opt.value = t.id;
+        opt.textContent = `${t.name} ${t.surname}`;
+        trainerSelect.appendChild(opt);
+      });
+    }
+  } catch (e) {
+    console.error("Error loading trainers:", e);
+  }
+
+  // Populate services
+  try {
+    const svcList = await get("/api/services");
+    services = svcList;
+    const serviceSelect = document.getElementById("adminReserveServiceSelect");
+    if (serviceSelect) {
+      serviceSelect.innerHTML = "";
+      svcList.forEach((s) => {
+        const opt = document.createElement("option");
+        opt.value = s.id;
+        opt.textContent = s.name;
+        serviceSelect.appendChild(opt);
+      });
+    }
+  } catch (e) {
+    console.error("Error loading services:", e);
+  }
+}
+
+async function handleAdminReservation() {
+  const clientSelect = document.getElementById("adminClientSelect");
+  const trainerSelect = document.getElementById("adminReserveTrainerSelect");
+  const serviceSelect = document.getElementById("adminReserveServiceSelect");
+  const dateInput = document.getElementById("adminReserveDate");
+  const timeSelect = document.getElementById("adminReserveTimeSelect");
+  const statusDiv = document.getElementById("adminReserveStatus");
+
+  if (
+    !clientSelect ||
+    !trainerSelect ||
+    !serviceSelect ||
+    !dateInput ||
+    !timeSelect ||
+    !statusDiv
+  ) {
+    console.error("One or more form elements not found");
+    return;
+  }
+
+  const userId = clientSelect.value;
+  const trainerId = trainerSelect.value;
+  const serviceId = serviceSelect.value;
+  const dateStr = dateInput.value;
+  const timeStr = timeSelect.value;
+
+  if (!userId || !trainerId || !dateStr || !timeStr) {
+    statusDiv.textContent = "Molimo popunite sva obavezna polja";
+    statusDiv.style.color = "red";
+    return;
+  }
+
+  const dt = new Date(`${dateStr}T${timeStr}:00`);
+  if (isNaN(dt.getTime())) {
+    statusDiv.textContent = "Neispravan format datuma ili vremena.";
+    statusDiv.style.color = "red";
+    return;
+  }
+  const scheduledAt = dt.toISOString();
+
+  try {
+    statusDiv.textContent = "Dodavanje termina...";
+    statusDiv.style.color = "blue";
+
+    const result = await post("/api/admin/appointments", {
+      userId: Number(userId),
+      trainerId: Number(trainerId),
+      scheduledAt,
+      serviceId: serviceId || null,
+    });
+
+    statusDiv.textContent = "Termin je uspješno dodan!";
+    statusDiv.style.color = "green";
+
+    // Clear form
+    document.getElementById("adminClientSelect").value = "";
+    document.getElementById("adminReserveTrainerSelect").value = "";
+    document.getElementById("adminReserveServiceSelect").value = "";
+    document.getElementById("adminReserveDate").value = "";
+    document.getElementById("adminReserveTimeSelect").value = "";
+
+    // Refresh appointment lists
+    await loadAdminAppointments();
+    await loadUserAppointments();
+
+    // Auto-clear message after 3 seconds
+    setTimeout(() => {
+      statusDiv.textContent = "";
+    }, 3000);
+  } catch (e) {
+    statusDiv.textContent = `Greška: ${e.message || "Nepoznata greška"}`;
+    statusDiv.style.color = "red";
+  }
+}
+
 function showDeleteConfirm(id, type) {
   console.log("showDeleteConfirm called with ID:", id, "Type:", type);
   pendingDeleteId = id;
@@ -1775,7 +1550,248 @@ function showDeleteConfirm(id, type) {
     true
   );
 }
-//event listeners za navigaciju kalendarom, rezervaciju termina i odjavu
+
+async function showEditModal(id) {
+  const appt = allUserAppointments.find((a) => a.id === id);
+  if (!appt) return;
+  pendingEditId = id;
+
+  const current = new Date(appt.scheduled_at);
+  const year = current.getFullYear();
+  const month = String(current.getMonth() + 1).padStart(2, "0");
+  const day = String(current.getDate()).padStart(2, "0");
+  const hours = String(current.getHours()).padStart(2, "0");
+  const mins = String(current.getMinutes()).padStart(2, "0");
+  const dateStr = `${year}-${month}-${day}`;
+  const timeStr = `${hours}:${mins}`;
+
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  const modal = document.createElement("div");
+  modal.className = "modal";
+  modal.innerHTML = `
+          <h3>Uredi termin</h3>
+          <p>Odaberite novi trener, uslugu, datum i vrijeme</p>
+          <label>Trener</label>
+          <select id="editTrainer"></select>
+          <label>Usluga</label>
+          <select id="editService"></select>
+          <label>Datum</label>
+          <input type="date" id="editDate" value="${dateStr}" />
+          <label style="margin-top:12px;">Vrijeme</label>
+          <select id="editTime"></select>
+          <div class="modal-buttons" style="margin-top:16px;">
+            <button class="modal-btn confirm" onclick="confirmEditFromModal()">Spremi</button>
+            <button class="modal-btn cancel" onclick="closeModal()">Odustani</button>
+          </div>
+        `;
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+
+  // Load trainers into dropdown, preselect current trainer
+  await loadEditTrainers(appt.trainer_id);
+
+  // Load services into dropdown
+  const editService = document.getElementById("editService");
+  editService.innerHTML = "";
+  services.forEach((s) => {
+    const opt = document.createElement("option");
+    opt.value = s.id;
+    opt.textContent = `${s.name} (${s.duration} min)`;
+    // Preselect by name if available, else by matching duration
+    if (appt.service_name && s.name === appt.service_name) opt.selected = true;
+    editService.appendChild(opt);
+  });
+  if (!editService.value && services.length) {
+    // fallback select based on duration or first service
+    const matchByDuration = services.find(
+      (s) => (appt.duration_minutes || 60) === s.duration
+    );
+    editService.value = matchByDuration ? matchByDuration.id : services[0].id;
+  }
+
+  // Populate time options with availability considering selected trainer/service and user conflicts
+  const currentTrainerId = Number(document.getElementById("editTrainer").value);
+  await populateEditTimeOptions(
+    currentTrainerId,
+    dateStr,
+    appt.id,
+    timeStr,
+    editService.value
+  );
+
+  // Update times when date changes
+  document.getElementById("editDate").addEventListener("change", async (e) => {
+    const newDate = e.target.value;
+    const trainerId = Number(document.getElementById("editTrainer").value);
+    const svc = document.getElementById("editService").value;
+    await populateEditTimeOptions(trainerId, newDate, appt.id, null, svc);
+  });
+
+  // Update times when trainer changes
+  document
+    .getElementById("editTrainer")
+    .addEventListener("change", async (e) => {
+      const trainerId = Number(e.target.value);
+      const newDate = document.getElementById("editDate").value || dateStr;
+      const svc = document.getElementById("editService").value;
+      await populateEditTimeOptions(trainerId, newDate, appt.id, null, svc);
+    });
+
+  // Update times when service changes
+  document
+    .getElementById("editService")
+    .addEventListener("change", async (e) => {
+      const trainerId = Number(document.getElementById("editTrainer").value);
+      const newDate = document.getElementById("editDate").value || dateStr;
+      await populateEditTimeOptions(
+        trainerId,
+        newDate,
+        appt.id,
+        null,
+        e.target.value
+      );
+    });
+}
+
+async function loadEditTrainers(currentTrainerId) {
+  try {
+    const trainers = await get("/api/trainers");
+    cachedTrainers = trainers;
+    const select = document.getElementById("editTrainer");
+    if (!select) return;
+    select.innerHTML = "";
+    trainers.forEach((t) => {
+      const opt = document.createElement("option");
+      opt.value = t.id;
+      opt.textContent = `${t.name} ${t.surname}`;
+      if (String(t.id) === String(currentTrainerId)) opt.selected = true;
+      select.appendChild(opt);
+    });
+  } catch (e) {
+    console.error("Error loading trainers for edit modal:", e);
+  }
+}
+
+async function populateEditTimeOptions(
+  trainerId,
+  dateStr,
+  currentApptId,
+  selectedTime,
+  serviceId
+) {
+  const select = document.getElementById("editTime");
+  if (!select) return;
+  select.innerHTML = "";
+  const selectedService = services.find((s) => s.id === serviceId);
+  const selDuration = selectedService?.duration || 60;
+
+  const hours = await getEffectiveTrainerHours(trainerId, dateStr);
+  const slotList = [];
+  for (let h = hours.open_hour; h <= hours.close_hour; h++) {
+    slotList.push(`${padHour(h)}:00`);
+  }
+  if (!slotList.length) {
+    const opt = document.createElement("option");
+    opt.textContent = "Radno vrijeme nije postavljeno";
+    opt.disabled = true;
+    opt.selected = true;
+    select.appendChild(opt);
+    return;
+  }
+
+  function overlaps(start1, end1, start2, end2) {
+    return start1 < end2 && start2 < end1;
+  }
+
+  let firstEnabledSet = false;
+  slotList.forEach((t) => {
+    const opt = document.createElement("option");
+    opt.value = t;
+    opt.textContent = t;
+    const slotStart = new Date(`${dateStr}T${t}:00`);
+    const slotEnd = new Date(slotStart.getTime() + selDuration * 60000);
+
+    let disabled = false;
+    allAppointments.forEach((a) => {
+      if (a.id === currentApptId) return; // skip current appt
+      if (a.trainer_id == trainerId) {
+        const apptStart = new Date(a.scheduled_at);
+        const y = apptStart.getFullYear();
+        const m = String(apptStart.getMonth() + 1).padStart(2, "0");
+        const d = String(apptStart.getDate()).padStart(2, "0");
+        const ds = `${y}-${m}-${d}`;
+        if (ds === dateStr) {
+          const apptEnd = new Date(
+            apptStart.getTime() + (a.duration_minutes || 60) * 60000
+          );
+          if (overlaps(slotStart, slotEnd, apptStart, apptEnd)) disabled = true;
+        }
+      }
+    });
+
+    allUserAppointments.forEach((a) => {
+      if (a.id === currentApptId) return; // skip current appt
+      const apptStart = new Date(a.scheduled_at);
+      const y = apptStart.getFullYear();
+      const m = String(apptStart.getMonth() + 1).padStart(2, "0");
+      const d = String(apptStart.getDate()).padStart(2, "0");
+      const ds = `${y}-${m}-${d}`;
+      if (ds === dateStr) {
+        const apptEnd = new Date(
+          apptStart.getTime() + (a.duration_minutes || 60) * 60000
+        );
+        if (overlaps(slotStart, slotEnd, apptStart, apptEnd)) disabled = true;
+      }
+    });
+
+    opt.disabled = disabled;
+    if (selectedTime === t && !disabled) {
+      opt.selected = true;
+      firstEnabledSet = true;
+    }
+    if (!selectedTime && !disabled && !firstEnabledSet) {
+      opt.selected = true;
+      firstEnabledSet = true;
+    }
+    select.appendChild(opt);
+  });
+}
+
+async function confirmEditFromModal() {
+  const id = pendingEditId;
+  const appt = allUserAppointments.find((a) => a.id === id);
+  if (!appt) {
+    closeModal();
+    return;
+  }
+  const dateVal = document.getElementById("editDate")?.value;
+  const timeVal = document.getElementById("editTime")?.value;
+  const trainerVal = document.getElementById("editTrainer")?.value;
+  const serviceVal = document.getElementById("editService")?.value;
+  if (!dateVal || !timeVal) {
+    showModal("Pogreška", "Molimo odaberite datum i vrijeme", "error-modal");
+    return;
+  }
+  const iso = new Date(`${dateVal}T${timeVal}:00`).toISOString();
+  try {
+    closeModal();
+    const body = { scheduledAt: iso };
+    if (trainerVal) body.trainerId = Number(trainerVal);
+    if (serviceVal) body.serviceId = serviceVal;
+    await put(`/api/appointments/${id}`, body);
+    await loadAllAppointmentsForFiltering();
+    await loadAppointments();
+    updateTimeSlots();
+    showModal("Uspjeh", "Termin je uspješno izmijenjen!", "success-modal");
+    setTimeout(() => closeModal(), 2000);
+  } catch (e) {
+    showModal("Pogreška", e.message, "error-modal");
+  }
+}
+
+// Trainer selection is now handled by trainer cards
+
 document.getElementById("prevMonth").addEventListener("click", () => {
   currentMonth.setMonth(currentMonth.getMonth() - 1);
   renderCalendar();
@@ -1784,7 +1800,7 @@ document.getElementById("prevMonth").addEventListener("click", () => {
   updateTimeSlots();
   updateBookButton();
 });
-//navigacija na sljedeci mjesec
+
 document.getElementById("nextMonth").addEventListener("click", () => {
   currentMonth.setMonth(currentMonth.getMonth() + 1);
   renderCalendar();
@@ -1793,7 +1809,7 @@ document.getElementById("nextMonth").addEventListener("click", () => {
   updateTimeSlots();
   updateBookButton();
 });
-//rezervacija termina
+
 document.getElementById("bookBtn").addEventListener("click", async () => {
   const err = document.getElementById("bookErr");
   const success = document.getElementById("bookSuccess");
@@ -1801,97 +1817,82 @@ document.getElementById("bookBtn").addEventListener("click", async () => {
   success.textContent = "";
 
   try {
-    if (!selectedTrainer || !selectedDate || !selectedTime) {
-      throw new Error("Molimo odaberite trenera, datum i vrijeme");
+    if (
+      !selectedTrainer ||
+      !selectedDate ||
+      !selectedTime ||
+      !selectedServiceId
+    ) {
+      throw new Error("Molimo odaberite trenera, uslugu, datum i vrijeme");
     }
 
-    // Provjera konflikata u array-u (ignoriraj termin koji se uređuje)
-    const conflictExists = allUserAppointments.some((a) => {
-      if (editingAppointmentId && String(a.id) === String(editingAppointmentId))
-        return false;
-      const appt = new Date(a.scheduled_at);
-      const dateStr = appt.toISOString().split("T")[0];
-      const timeStr = appt.toTimeString().slice(0, 5);
-      return dateStr === selectedDate && timeStr === selectedTime;
-    });
-
-    if (conflictExists) {
-      throw new Error("Već imate termin u odabrano vrijeme i datum");
-    }
-
-    // Konvertiraj u ISO format
     const iso = new Date(`${selectedDate}T${selectedTime}:00`).toISOString();
+    await post("/api/appointments", {
+      trainerId: selectedTrainer,
+      scheduledAt: iso,
+      serviceId: selectedServiceId,
+    });
+    await loadAllAppointmentsForFiltering();
+    await loadAppointments();
+    updateTimeSlots();
 
-    if (editingAppointmentId) {
-      // Update existing appointment
-      const updated = await put(`/api/appointments/${editingAppointmentId}`, {
-        trainerId: selectedTrainer,
-        scheduledAt: iso,
-      });
+    success.textContent = "Termin je uspješno rezerviran!";
 
-      // Update local arrays
-      const idxUser = allUserAppointments.findIndex(
-        (a) => String(a.id) === String(editingAppointmentId)
-      );
-      if (idxUser > -1) allUserAppointments[idxUser] = updated;
-      const idxAll = allAppointments.findIndex(
-        (a) => String(a.id) === String(editingAppointmentId)
-      );
-      if (idxAll > -1) allAppointments[idxAll] = updated;
-
-      updateTimeSlots();
-      renderFilteredUserAppointments();
-      updateBookButton();
-
-      success.textContent = "Termin je uspješno ažuriran!";
-      setTimeout(() => {
-        success.textContent = "";
-      }, 2000);
-
-      editingAppointmentId = null;
-      // restore button label and update cancel visibility
-      document.getElementById("bookBtn").textContent = "Rezerviraj termin";
-      updateBookButton();
-    } else {
-      // Pošalji zahtjev za novi termin
-      const newAppt = await post("/api/appointments", {
-        trainerId: selectedTrainer,
-        scheduledAt: iso,
-      });
-
-      // Ažuriraj lokalne podatke
-      allUserAppointments.push(newAppt);
-      allAppointments.push(newAppt);
-
-      updateTimeSlots();
-      renderFilteredUserAppointments();
-      updateBookButton();
-
-      success.textContent = "Termin je uspješno rezerviran!";
-      setTimeout(() => {
-        success.textContent = "";
-      }, 2000);
-    }
+    setTimeout(() => {
+      success.textContent = "";
+    }, 2000);
   } catch (e) {
     err.textContent = e.message;
   }
 });
-//odjava korisnika
+
 document.getElementById("logoutBtn").addEventListener("click", async () => {
   await post("/api/logout", {});
   location.href = "/";
 });
 
+// Service selector change
+document.getElementById("serviceSelect")?.addEventListener("change", (e) => {
+  selectedServiceId = e.target.value;
+  updateTimeSlots();
+  updateBookButton();
+});
+
+// Trainer filter event listeners
+document
+  .getElementById("filterService")
+  ?.addEventListener("change", async (e) => {
+    // Note: All trainers offer all services, so no filtering needed
+    filterServiceId = e.target.value || null;
+    renderFilteredTrainers();
+  });
+
+document
+  .getElementById("filterTrainerType")
+  ?.addEventListener("change", async (e) => {
+    filterTrainerType = e.target.value || null;
+    await loadTrainers();
+  });
+
 // User filter event listeners
+document
+  .getElementById("userServiceFilter")
+  ?.addEventListener("change", (e) => {
+    userFilterService = e.target.value;
+    renderFilteredUserAppointments();
+  });
+
 document.getElementById("userDateFilter")?.addEventListener("change", (e) => {
   userFilterDate = e.target.value;
   renderFilteredUserAppointments();
 });
-// Clear user filters
+
 document
   .getElementById("clearUserFiltersBtn")
   ?.addEventListener("click", () => {
+    userFilterService = "";
     userFilterDate = "";
+    document.getElementById("userServiceFilter").value = "";
     document.getElementById("userDateFilter").value = "";
     renderFilteredUserAppointments();
   });
@@ -1903,12 +1904,12 @@ document
     adminFilterTrainer = e.target.value;
     renderFilteredAdminAppointments();
   });
-// Admin date filter
+
 document.getElementById("adminDateFilter")?.addEventListener("change", (e) => {
   adminFilterDate = e.target.value;
   renderFilteredAdminAppointments();
 });
-// Clear admin filters
+
 document.getElementById("clearFiltersBtn")?.addEventListener("click", () => {
   adminFilterTrainer = "";
   adminFilterDate = "";
@@ -1917,7 +1918,91 @@ document.getElementById("clearFiltersBtn")?.addEventListener("click", () => {
   renderFilteredAdminAppointments();
 });
 
-// init
+document
+  .getElementById("trainerWorkHoursSelect")
+  ?.addEventListener("change", async (e) => {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, "0");
+    const dd = String(today.getDate()).padStart(2, "0");
+    const todayStr = `${yyyy}-${mm}-${dd}`;
+    const startInput = document.getElementById("trainerWorkStartDate");
+    if (startInput && !startInput.value) startInput.value = todayStr;
+    await loadTrainerWorkHoursForAdmin(e.target.value);
+  });
+
+document
+  .getElementById("saveTrainerWorkHoursBtn")
+  ?.addEventListener("click", async () => {
+    await saveTrainerWorkHours();
+  });
+
+document
+  .getElementById("trainerWorkStartDate")
+  ?.addEventListener("change", async (e) => {
+    const trainerId = document.getElementById("trainerWorkHoursSelect")?.value;
+    if (trainerId) {
+      await loadTrainerWorkHoursForAdmin(trainerId);
+    }
+  });
+
+// Admin reservation
+document
+  .getElementById("adminReserveBtn")
+  ?.addEventListener("click", async () => {
+    await handleAdminReservation();
+  });
+
+document
+  .getElementById("adminReserveTrainerSelect")
+  ?.addEventListener("change", async () => {
+    await refreshAdminReserveTimes();
+  });
+
+document
+  .getElementById("adminReserveServiceSelect")
+  ?.addEventListener("change", async () => {
+    await refreshAdminReserveTimes();
+  });
+
+document.getElementById("adminReserveDate")?.addEventListener("change", () => {
+  const dateInput = document.getElementById("adminReserveDate");
+  if (!dateInput) return;
+  // Prevent selecting past dates via manual entry
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth() + 1).padStart(2, "0");
+  const dd = String(today.getDate()).padStart(2, "0");
+  const minStr = `${yyyy}-${mm}-${dd}`;
+  if (dateInput.value && dateInput.value < minStr) {
+    dateInput.value = minStr;
+  }
+  refreshAdminReserveTimes();
+});
+
+document
+  .getElementById("saveWorkHoursBtn")
+  ?.addEventListener("click", async () => {
+    const openVal = document.getElementById("workOpen")?.value;
+    const closeVal = document.getElementById("workClose")?.value;
+    const status = document.getElementById("workHoursStatus");
+    if (status) status.textContent = "";
+    if (!openVal || !closeVal) {
+      if (status) status.textContent = "Unesite početak i kraj radnog vremena.";
+      return;
+    }
+    const openHour = Number(openVal.split(":")[0]);
+    const closeHour = Number(closeVal.split(":")[0]);
+    try {
+      await put("/api/admin/work-hours", { openHour, closeHour });
+      await loadWorkHours();
+      updateTimeSlots();
+      if (status) status.textContent = "Radno vrijeme je spremljeno.";
+    } catch (e) {
+      if (status) status.textContent = e.message || "Greška pri spremanju.";
+    }
+  });
+
 // init
 (async () => {
   try {
@@ -1928,32 +2013,111 @@ document.getElementById("clearFiltersBtn")?.addEventListener("click", () => {
 
     if (isAdmin) {
       console.log("Loading admin panel...");
-      document.getElementById("pageTitle").textContent = "Admin panel";
-      document.getElementById("bookingPanel").hidden = true;
-      document.getElementById("userApptPanel").hidden = true;
-      document.getElementById("adminPanel").hidden = false;
+      const pageTitle = document.getElementById("pageTitle");
+      const bookingPanel = document.getElementById("bookingPanel");
+      const userApptPanel = document.getElementById("userApptPanel");
+      const adminPanel = document.getElementById("adminPanel");
+      const adminReservePanel = document.getElementById("adminReservePanel");
+      const workHoursCard = document.getElementById("workHoursCard");
+      const trainerWorkHoursCard = document.getElementById(
+        "trainerWorkHoursCard"
+      );
+      const statsPanel = document.getElementById("statsPanel");
+      const userTabs = document.getElementById("userTabs");
+
+      if (pageTitle) pageTitle.textContent = "Admin panel";
+      if (bookingPanel) bookingPanel.hidden = true;
+      if (userApptPanel) userApptPanel.hidden = true;
+      if (adminPanel) adminPanel.hidden = false;
+      if (adminReservePanel) adminReservePanel.hidden = false;
+      // keep global work hours card hidden for admins
+      if (workHoursCard) workHoursCard.hidden = true;
+      if (trainerWorkHoursCard) trainerWorkHoursCard.hidden = false;
+      if (statsPanel) statsPanel.hidden = false;
+      if (userTabs) userTabs.style.display = "none";
+
+      await loadWorkHours();
       await populateAdminTrainerFilter();
+      await populateTrainerWorkHoursSelect();
+      await loadTrainerWorkHoursForAdmin("");
+      await populateAdminReservationSelects();
+      const adminDateInput = document.getElementById("adminReserveDate");
+      if (adminDateInput) {
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, "0");
+        const dd = String(today.getDate()).padStart(2, "0");
+        adminDateInput.value = `${yyyy}-${mm}-${dd}`;
+        adminDateInput.min = `${yyyy}-${mm}-${dd}`;
+      }
+      await refreshAdminReserveTimes();
       await loadAdminAppointments();
+      await loadAdminStatistics();
       console.log("Admin panel loaded");
     } else {
       console.log("Loading user panel...");
+      // Make sure user panels are visible
+      const bookingPanelUser = document.getElementById("bookingPanel");
+      const userApptPanelUser = document.getElementById("userApptPanel");
+      if (bookingPanelUser) bookingPanelUser.hidden = false;
+      if (userApptPanelUser) userApptPanelUser.hidden = false;
 
-      // Učitaj sve termine
+      document.getElementById("userTabs").style.display = "flex";
+      await loadWorkHours();
+      services = await get("/api/services");
+      const serviceSelect = document.getElementById("serviceSelect");
+      serviceSelect.innerHTML = "";
+      services.forEach((s) => {
+        const opt = document.createElement("option");
+        opt.value = s.id;
+        opt.textContent = `${s.name} (${s.duration} min)`;
+        serviceSelect.appendChild(opt);
+      });
+
+      // Populate filter service dropdown if it exists
+      const filterService = document.getElementById("filterService");
+      if (filterService) {
+        filterService.innerHTML = '<option value="">Sve usluge</option>';
+        services.forEach((s) => {
+          const opt = document.createElement("option");
+          opt.value = s.id;
+          opt.textContent = s.name;
+          filterService.appendChild(opt);
+        });
+      }
+
+      // Populate trainer type filter dropdown
+      const filterTrainerType = document.getElementById("filterTrainerType");
+      if (filterTrainerType) {
+        const trainerTypes = await get("/api/trainer-types");
+        filterTrainerType.innerHTML = '<option value="">Svi tipovi</option>';
+        trainerTypes.forEach((type) => {
+          const opt = document.createElement("option");
+          opt.value = type;
+          opt.textContent = type;
+          filterTrainerType.appendChild(opt);
+        });
+      }
+
+      // Populate user service filter dropdown
+      const userServiceFilter = document.getElementById("userServiceFilter");
+      if (userServiceFilter) {
+        userServiceFilter.innerHTML = '<option value="">Sve usluge</option>';
+        services.forEach((s) => {
+          const opt = document.createElement("option");
+          opt.value = s.name;
+          opt.textContent = s.name;
+          userServiceFilter.appendChild(opt);
+        });
+      }
+
       await loadAllAppointmentsForFiltering();
       console.log("All appointments loaded");
-
-      // Dohvati trenere i spremi ih u lokalnu varijablu
-      const trainers = await loadTrainers(); // <-- ovdje definiramo varijablu
-      allTrainers = trainers; // globalno
-
-      highlightSelectedTrainer();
-
-      currentMonth = new Date(); // inicijalni mjesec
-      renderCalendar();
-      document.getElementById("calendarContainer").style.display = "block";
-
+      await loadTrainers();
+      console.log("Trainers loaded");
       await loadAppointments();
       console.log("User appointments loaded");
+      updateTimeSlots();
     }
   } catch (e) {
     console.error("Init error:", e);
