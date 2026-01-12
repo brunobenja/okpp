@@ -781,9 +781,11 @@ function renderFilteredTrainers() {
     const avatar = document.createElement("div");
     avatar.className = "trainer-avatar";
 
-    if (t.profile_pic) {
+    const imgUrl = t.profile_pic || t.pic;
+
+    if (imgUrl) {
       const img = document.createElement("img");
-      img.src = t.profile_pic;
+      img.src = imgUrl;
       img.alt = `${t.name} ${t.surname}`;
       img.style.width = "100%";
       img.style.height = "100%";
@@ -791,10 +793,19 @@ function renderFilteredTrainers() {
       img.style.objectFit = "cover";
       avatar.appendChild(img);
     } else {
-      const initials = `${(t.name || "").charAt(0)}${(t.surname || "").charAt(
-        0
-      )}`.toUpperCase();
-      avatar.textContent = initials || "TR";
+      const initials =
+        `${(t.name || "").charAt(0)}${(t.surname || "").charAt(
+          0
+        )}`.toUpperCase() || "TR";
+      avatar.textContent = initials;
+      avatar.style.backgroundColor = "#888";
+      avatar.style.display = "flex";
+      avatar.style.alignItems = "center";
+      avatar.style.justifyContent = "center";
+      avatar.style.fontWeight = "bold";
+      avatar.style.color = "#fff";
+      avatar.style.fontSize = "1.2rem";
+      avatar.style.borderRadius = "50%";
     }
 
     const name = document.createElement("div");
