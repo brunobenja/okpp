@@ -2,16 +2,17 @@ let isAdmin = false;
 let allAppointments = [];
 let allUserAppointments = [];
 let allAdminAppointments = [];
+let allTrainers = [];
 let selectedTrainer = null;
 let selectedDate = null;
 let selectedTime = null;
 let currentMonth = new Date();
+let editingAppointmentId = null;
 let pendingDeleteId = null;
 let pendingDeleteType = null;
-let editingAppointmentId = null;
+let userFilterDate = "";
 let adminFilterTrainer = "";
 let adminFilterDate = "";
-let userFilterDate = "";
 // Mogući termini u danu
 const allTimeSlots = [
   "08:00",
@@ -407,8 +408,8 @@ function updateTimeSlots() {
   container.style.display = "block";
   grid.innerHTML = "";
 
-  const appointments = allAppointments; // sve rezervacije (trenere)
-  const userAppointments = allUserAppointments; // sve korisnikove rezervacije
+  const appointments = allAppointments || []; // sve rezervacije (trenere)
+  const userAppointments = allUserAppointments || []; // sve korisnikove rezervacije
 
   // Trenerovi termini
   const trainerAppointments = allAppointments.filter(
@@ -1474,12 +1475,16 @@ function updateTimeSlots() {
         // Dohvati trenere i spremi ih u lokalnu varijablu
         const trainers = await loadTrainers(); // <-- ovdje definiramo varijablu
         allTrainers = trainers; // globalno
-
+        await loadAppointments();
         highlightSelectedTrainer();
 
         currentMonth = new Date(); // inicijalni mjesec
         renderCalendar();
         document.getElementById("calendarContainer").style.display = "block";
+
+        if (selectedTrainer && selectedDate) {
+          updateTimeSlots();
+        }
 
         await loadAppointments();
         console.log("User appointments loaded");
@@ -1555,27 +1560,30 @@ function startEditAppointment(id) {
 
     editingAppointmentId = appt.id;
 
-    // Set selected trainer and highlight card
-    selectedTrainer = appt.trainer_id;
-    highlightSelectedTrainer();
-    document.getElementById("calendarContainer").style.display = "block";
-
-    // 2️⃣ datum
+    // 1️⃣ datum i vrijeme
     const dt = new Date(appt.scheduled_at);
     const year = dt.getFullYear();
     const month = String(dt.getMonth() + 1).padStart(2, "0");
     const day = String(dt.getDate()).padStart(2, "0");
-    selectedDate = `${year}-${month}-${day}`;
-    currentMonth = new Date(year, dt.getMonth(), 1);
-    renderCalendar();
 
-    // 3️⃣ vrijeme
+    selectedDate = `${year}-${month}-${day}`;
     selectedTime = dt.toTimeString().slice(0, 5);
+    currentMonth = new Date(year, dt.getMonth(), 1);
+
+    // 2️⃣ trener
+    selectedTrainer = appt.trainer_id;
+    highlightSelectedTrainer();
+
+    // 3️⃣ prikaži kalendar i termine
+    document.getElementById("calendarContainer").style.display = "block";
+    renderCalendar();
     document.getElementById("timeSlots").style.display = "block";
+
+    // 4️⃣ update buttoni i slotovi
     updateTimeSlots();
     updateBookButton();
 
-    // Scroll into view the booking area
+    // 5️⃣ scroll
     document
       .getElementById("bookFinal")
       ?.scrollIntoView({ behavior: "smooth" });
@@ -1584,6 +1592,7 @@ function startEditAppointment(id) {
     alert("Greška prilikom pokretanja uređivanja. Vidi konzolu.");
   }
 }
+
 // Ensure function is available for inline onclick handlers
 window.startEditAppointment = startEditAppointment;
 
