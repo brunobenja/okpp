@@ -833,7 +833,17 @@ async function selectTrainer(trainerId, cardEl) {
   calendarContainer.style.display = "block";
   const servicePanel = document.getElementById("servicePanel");
   if (services && services.length > 0) {
-    servicePanel.style.display = "none";
+
+
+
+
+    servicePanel.style.display = "block";
+
+
+
+
+
+
     // Show all services (no trainer-specific filtering in this system)
     const serviceSelect = document.getElementById("serviceSelect");
     serviceSelect.innerHTML = "";
