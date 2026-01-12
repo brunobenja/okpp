@@ -9,16 +9,16 @@ const userPasswords = [
 ];
 
 const trainerData = [
-  { name: 'Petar', surname: 'Babić', sex: 'M', age: 28, yearsExp: 5, pic: 'https://i.pravatar.cc/150?img=12', services: ['func', 'snaga'] },
-  { name: 'Marija', surname: 'Jurić', sex: 'F', age: 32, yearsExp: 8, pic: 'https://i.pravatar.cc/150?img=47', services: ['masaza', 'func'] },
-  { name: 'Luka', surname: 'Knežević', sex: 'M', age: 35, yearsExp: 10, pic: 'https://i.pravatar.cc/150?img=13', services: ['crossfit', 'func', 'snaga'] },
-  { name: 'Ivana', surname: 'Marić', sex: 'F', age: 27, yearsExp: 4, pic: 'https://i.pravatar.cc/150?img=48', services: ['masaza'] },
-  { name: 'Krešimir', surname: 'Perić', sex: 'M', age: 30, yearsExp: 7, pic: 'https://i.pravatar.cc/150?img=14', services: ['crossfit', 'snaga'] },
-  { name: 'Jelena', surname: 'Radić', sex: 'F', age: 29, yearsExp: 6, pic: 'https://i.pravatar.cc/150?img=49', services: ['func', 'masaza'] },
-  { name: 'Tomislav', surname: 'Božić', sex: 'M', age: 33, yearsExp: 9, pic: 'https://i.pravatar.cc/150?img=15', services: ['snaga', 'crossfit'] },
-  { name: 'Sara', surname: 'Pavić', sex: 'F', age: 26, yearsExp: 3, pic: 'https://i.pravatar.cc/150?img=44', services: ['func'] },
-  { name: 'Nikola', surname: 'Petrović', sex: 'M', age: 31, yearsExp: 8, pic: 'https://i.pravatar.cc/150?img=33', services: ['func', 'snaga', 'crossfit'] },
-  { name: 'Maja', surname: 'Vuković', sex: 'F', age: 28, yearsExp: 5, pic: 'https://i.pravatar.cc/150?img=45', services: ['masaza', 'func'] }
+  { name: 'Petar', surname: 'Babić', sex: 'M', age: 28, years_experience: 5, profile_pic: 'https://i.pravatar.cc/150?img=12', services: ['func', 'snaga'] },
+  { name: 'Marija', surname: 'Jurić', sex: 'F', age: 32, years_experience: 8, profile_pic: 'https://i.pravatar.cc/150?img=47', services: ['masaza', 'func'] },
+  { name: 'Luka', surname: 'Knežević', sex: 'M', age: 35, years_experience: 10, profile_pic: 'https://i.pravatar.cc/150?img=13', services: ['crossfit', 'func', 'snaga'] },
+  { name: 'Ivana', surname: 'Marić', sex: 'F', age: 27, years_experience: 4, profile_pic: 'https://i.pravatar.cc/150?img=48', services: ['masaza'] },
+  { name: 'Krešimir', surname: 'Perić', sex: 'M', age: 30, years_experience: 7, profile_pic: 'https://i.pravatar.cc/150?img=14', services: ['crossfit', 'snaga'] },
+  { name: 'Jelena', surname: 'Radić', sex: 'F', age: 29, years_experience: 6, profile_pic: 'https://i.pravatar.cc/150?img=49', services: ['func', 'masaza'] },
+  { name: 'Tomislav', surname: 'Božić', sex: 'M', age: 33, years_experience: 9, profile_pic: 'https://i.pravatar.cc/150?img=15', services: ['snaga', 'crossfit'] },
+  { name: 'Sara', surname: 'Pavić', sex: 'F', age: 26, years_experience: 3, profile_pic: 'https://i.pravatar.cc/150?img=44', services: ['func'] },
+  { name: 'Nikola', surname: 'Petrović', sex: 'M', age: 31, years_experience: 8, profile_pic: 'https://i.pravatar.cc/150?img=33', services: ['func', 'snaga', 'crossfit'] },
+  { name: 'Maja', surname: 'Vuković', sex: 'F', age: 28, years_experience: 5, profile_pic: 'https://i.pravatar.cc/150?img=45', services: ['masaza', 'func'] }
 ];
 
 async function seedDatabase() {
@@ -64,8 +64,8 @@ async function seedDatabase() {
         trainer.surname,
         trainer.sex,
         trainer.age,
-        trainer.pic,
-        trainer.yearsExp,
+        trainer.profile_pic,
+        trainer.years_experience,
         null
       );
       // Update services

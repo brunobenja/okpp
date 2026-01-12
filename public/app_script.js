@@ -917,7 +917,6 @@ function renderCalendar() {
       }
       div.onclick = () => selectDate(dateStr);
     }
-
     grid.appendChild(div);
   }
 }
