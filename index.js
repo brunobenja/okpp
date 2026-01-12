@@ -266,6 +266,14 @@ async function updateAppointment(id, trainerId, scheduledAt) {
   );
   return rows[0];
 }
+async function cancelAppointment(id, canceledBy) {
+  // canceledBy može biti 'user' ili 'admin', po potrebi možeš logirati tko je otkazao
+  const { rows } = await query(
+    "DELETE FROM termini WHERE id = $1 RETURNING *",
+    [id]
+  );
+  return rows[0]; // vraća obrisani termin, ako treba
+}
 
 
 module.exports = {
