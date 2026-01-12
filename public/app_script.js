@@ -153,15 +153,15 @@ async function loadAllAppointmentsForFiltering() {
 // Funkcija za učitavanje trenera
 async function loadTrainers() {
   const trainers = await get("/api/trainers");
+  allTrainers = trainers; // globalno
 
   const grid = document.getElementById("personal");
-  grid.innerHTML = ""; // očisti postojeće
+  grid.innerHTML = "";
 
   trainers.forEach((t) => {
     const card = document.createElement("div");
     card.className = "trainer-card";
 
-    // Boja border-a prema tipu
     if (t.type === "personal") card.style.border = "2px solid green";
     else if (t.type === "group") card.style.border = "2px solid orange";
     else if (t.type === "rehabilitation") card.style.border = "2px solid blue";
@@ -182,9 +182,9 @@ async function loadTrainers() {
       img.style.objectFit = "cover";
       avatar.appendChild(img);
     } else {
-      const initials = `${(t.name || "").charAt(0)}${(t.surname || "").charAt(
-        0
-      )}`.toUpperCase();
+      const initials = `${(t.name || "").charAt(0)}${(t.surname || "")
+        .charAt(0)
+        .toUpperCase()}`;
       avatar.textContent = initials || "TR";
     }
 
@@ -203,7 +203,11 @@ async function loadTrainers() {
     card.appendChild(typeLabel);
     grid.appendChild(card);
   });
+
+  return trainers; // <-- vrati listu trenera
 }
+
+
 function highlightSelectedTrainer() {
   if (!selectedTrainer) return;
 
@@ -946,6 +950,7 @@ document.getElementById("clearFiltersBtn")?.addEventListener("click", () => {
 });
 
 // init
+// init
 (async () => {
   try {
     console.log("Loading user info...");
@@ -964,11 +969,21 @@ document.getElementById("clearFiltersBtn")?.addEventListener("click", () => {
       console.log("Admin panel loaded");
     } else {
       console.log("Loading user panel...");
+
+      // Učitaj sve termine
       await loadAllAppointmentsForFiltering();
       console.log("All appointments loaded");
-      await loadTrainers();
+
+      // Dohvati trenere i spremi ih u lokalnu varijablu
+      const trainers = await loadTrainers(); // <-- ovdje definiramo varijablu
+      allTrainers = trainers;               // globalno
+
       highlightSelectedTrainer();
-      console.log("Trainers loaded");
+
+      currentMonth = new Date(); // inicijalni mjesec
+      renderCalendar();
+      document.getElementById("calendarContainer").style.display = "block";
+
       await loadAppointments();
       console.log("User appointments loaded");
     }
@@ -977,3 +992,4 @@ document.getElementById("clearFiltersBtn")?.addEventListener("click", () => {
     alert("Error loading data: " + (e.message || e));
   }
 })();
+
