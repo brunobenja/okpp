@@ -224,11 +224,11 @@ function selectTrainer(trainerId, el, preserveSelection = false) {
   if (!preserveSelection) {
     selectedDate = null;
     selectedTime = null;
+    currentMonth = new Date();
   }
 
   // Prikaži kalendar i resetiraj time slotove
   document.getElementById("calendarContainer").style.display = "block";
-  currentMonth = new Date();
   renderCalendar();
 
   if (!preserveSelection) {
