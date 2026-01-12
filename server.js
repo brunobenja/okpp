@@ -70,17 +70,11 @@ function formatHourLabel(hour) {
 }
 
 async function getEffectiveWorkHours(trainerId, dateStr = null) {
-  if (trainerId) {
-    if (dateStr) {
-      const override = await db.getTrainerWorkHoursForDate(Number(trainerId), dateStr);
-      if (override) return { ...override, source: 'override' };
-    }
-    const specific = await db.getTrainerWorkHours(Number(trainerId));
-    if (specific) return { ...specific, source: 'trainer' };
-  }
+  // ignore overrides for now, use global defaults
   const global = await db.getWorkHours();
-  return { ...global, source: 'global' };
+  return { ...global, source: "global" };
 }
+
 
 // Auth
 app.post('/api/register', async (req, res) => {
@@ -292,24 +286,48 @@ app.get('/api/appointments/all', authRequired, async (req, res) => {
 app.post('/api/appointments', authRequired, async (req, res) => {
   try {
     const { trainerId, scheduledAt, serviceId } = req.body || {};
-    if (!trainerId || !scheduledAt) return res.status(400).json({ error: 'Nedostaju polja' });
+    if (!trainerId || !scheduledAt)
+      return res.status(400).json({ error: "Nedostaju polja" });
     const when = new Date(scheduledAt);
-    if (isNaN(when.getTime())) return res.status(400).json({ error: 'Neispravan datum' });
+    if (isNaN(when.getTime()))
+      return res.status(400).json({ error: "Neispravan datum" });
     // Enforce hour boundary (minutes must be 00)
-    if (when.getMinutes() !== 0 || when.getSeconds() !== 0 || when.getMilliseconds() !== 0) {
-      return res.status(400).json({ error: 'Termini moraju počinjati na puni sat (npr. 16:00)' });
+    if (
+      when.getMinutes() !== 0 ||
+      when.getSeconds() !== 0 ||
+      when.getMilliseconds() !== 0
+    ) {
+      return res
+        .status(400)
+        .json({ error: "Termini moraju počinjati na puni sat (npr. 16:00)" });
     }
-    const service = serviceId ? getServiceById(serviceId) : null;
-    const duration = service ? service.duration : 60;
-    const serviceName = service ? service.name : null;
+    // Fetch trainer type from DB
+    const { rows: trainerRows } = await db.query(
+      "SELECT trainer_type FROM treneri WHERE id = $1",
+      [Number(trainerId)]
+    );
+    if (!trainerRows.length)
+      return res.status(404).json({ error: "Trainer not found" });
+
+    const serviceName = trainerRows[0].trainer_type || "personal";
+    const duration = 60; // default duration for all services, or customize per type
 
     const dateStr = when.toISOString().slice(0, 10);
-    const { open_hour, close_hour } = await getEffectiveWorkHours(trainerId, dateStr);
+    const { open_hour, close_hour } = await getEffectiveWorkHours(
+      trainerId,
+      dateStr
+    );
     const openHour = Number(open_hour ?? 8);
     const closeHour = Number(close_hour ?? 20);
     const startHour = when.getHours();
     if (startHour < openHour || startHour > closeHour) {
-      return res.status(400).json({ error: `Termini su dostupni između ${formatHourLabel(openHour)} i ${formatHourLabel(closeHour)}` });
+      return res
+        .status(400)
+        .json({
+          error: `Termini su dostupni između ${formatHourLabel(
+            openHour
+          )} i ${formatHourLabel(closeHour)}`,
+        });
     }
 
     // Check trainer overlap
@@ -323,7 +341,8 @@ app.post('/api/appointments', authRequired, async (req, res) => {
        LIMIT 1`,
       [Number(trainerId), startIso, endIso]
     );
-    if (trainerOverlap.rows.length) return res.status(409).json({ error: 'Termin nije dostupan' });
+    if (trainerOverlap.rows.length)
+      return res.status(409).json({ error: "Termin nije dostupan" });
 
     // Check user overlap
     const userOverlap = await db.query(
@@ -334,9 +353,18 @@ app.post('/api/appointments', authRequired, async (req, res) => {
        LIMIT 1`,
       [Number(req.user.id), startIso, endIso]
     );
-    if (userOverlap.rows.length) return res.status(409).json({ error: 'Već imate termin u odabranom periodu' });
+    if (userOverlap.rows.length)
+      return res
+        .status(409)
+        .json({ error: "Već imate termin u odabranom periodu" });
 
-    const appt = await db.bookAppointmentWithDetails(req.user.id, Number(trainerId), when.toISOString(), duration, serviceName);
+    const appt = await db.bookAppointmentWithDetails(
+      req.user.id,
+      Number(trainerId),
+      when.toISOString(),
+      duration,
+      serviceName
+    );
     res.json(appt);
   } catch (e) {
     if (e && e.code === '23505') return res.status(409).json({ error: 'Termin nije dostupan' });
@@ -350,31 +378,57 @@ app.post('/api/admin/appointments', authRequired, async (req, res) => {
   if (!isAdminUser(req.user)) return res.status(403).json({ error: 'Zabranjeno' });
   try {
     const { userId, trainerId, scheduledAt, serviceId } = req.body || {};
-    if (!userId || !trainerId || !scheduledAt) return res.status(400).json({ error: 'Nedostaju polja' });
-    
+    if (!userId || !trainerId || !scheduledAt)
+      return res.status(400).json({ error: "Nedostaju polja" });
+
     // Verify user exists
     const user = await db.getUserById(Number(userId));
-    if (!user) return res.status(404).json({ error: 'Korisnik nije pronađen' });
-    
+    if (!user) return res.status(404).json({ error: "Korisnik nije pronađen" });
+
     const when = new Date(scheduledAt);
-    if (isNaN(when.getTime())) return res.status(400).json({ error: 'Neispravan datum' });
-    
+    if (isNaN(when.getTime()))
+      return res.status(400).json({ error: "Neispravan datum" });
+
     // Enforce hour boundary
-    if (when.getMinutes() !== 0 || when.getSeconds() !== 0 || when.getMilliseconds() !== 0) {
-      return res.status(400).json({ error: 'Termini moraju počinjati na puni sat (npr. 16:00)' });
+    if (
+      when.getMinutes() !== 0 ||
+      when.getSeconds() !== 0 ||
+      when.getMilliseconds() !== 0
+    ) {
+      return res
+        .status(400)
+        .json({ error: "Termini moraju počinjati na puni sat (npr. 16:00)" });
     }
+
+    // Fetch trainer_type from DB
+    const { rows: trainerRows } = await db.query(
+      "SELECT trainer_type FROM treneri WHERE id = $1",
+      [Number(trainerId)]
+    );
+    if (!trainerRows.length)
+      return res.status(404).json({ error: "Trainer not found" });
+
+    const serviceName = trainerRows[0].trainer_type || "personal";
+    const duration = 60; // default duration for all services
+
     
-    const service = serviceId ? getServiceById(serviceId) : null;
-    const duration = service ? service.duration : 60;
-    const serviceName = service ? service.name : null;
 
     const dateStr = when.toISOString().slice(0, 10);
-    const { open_hour, close_hour } = await getEffectiveWorkHours(trainerId, dateStr);
+    const { open_hour, close_hour } = await getEffectiveWorkHours(
+      trainerId,
+      dateStr
+    );
     const openHour = Number(open_hour ?? 8);
     const closeHour = Number(close_hour ?? 20);
     const startHour = when.getHours();
     if (startHour < openHour || startHour > closeHour) {
-      return res.status(400).json({ error: `Termini su dostupni između ${formatHourLabel(openHour)} i ${formatHourLabel(closeHour)}` });
+      return res
+        .status(400)
+        .json({
+          error: `Termini su dostupni između ${formatHourLabel(
+            openHour
+          )} i ${formatHourLabel(closeHour)}`,
+        });
     }
 
     // Check trainer overlap
@@ -388,7 +442,8 @@ app.post('/api/admin/appointments', authRequired, async (req, res) => {
        LIMIT 1`,
       [Number(trainerId), startIso, endIso]
     );
-    if (trainerOverlap.rows.length) return res.status(409).json({ error: 'Termin nije dostupan za trenera' });
+    if (trainerOverlap.rows.length)
+      return res.status(409).json({ error: "Termin nije dostupan za trenera" });
 
     // Check user overlap
     const userOverlap = await db.query(
@@ -399,9 +454,18 @@ app.post('/api/admin/appointments', authRequired, async (req, res) => {
        LIMIT 1`,
       [Number(userId), startIso, endIso]
     );
-    if (userOverlap.rows.length) return res.status(409).json({ error: 'Korisnik već ima termin u odabranom periodu' });
+    if (userOverlap.rows.length)
+      return res
+        .status(409)
+        .json({ error: "Korisnik već ima termin u odabranom periodu" });
 
-    const appt = await db.bookAppointmentWithDetails(Number(userId), Number(trainerId), when.toISOString(), duration, serviceName);
+    const appt = await db.bookAppointmentWithDetails(
+      Number(userId),
+      Number(trainerId),
+      when.toISOString(),
+      duration,
+      serviceName
+    );
     res.json(appt);
   } catch (e) {
     if (e && e.code === '23505') return res.status(409).json({ error: 'Termin nije dostupan' });
@@ -414,58 +478,101 @@ app.post('/api/admin/appointments', authRequired, async (req, res) => {
 app.put('/api/appointments/:id', authRequired, async (req, res) => {
   try {
     const id = Number(req.params.id);
-    if (!id || Number.isNaN(id)) return res.status(400).json({ error: 'Neispravan ID' });
+    if (!id || Number.isNaN(id))
+      return res.status(400).json({ error: "Neispravan ID" });
 
     const { scheduledAt, trainerId, serviceId } = req.body || {};
-    if (!scheduledAt && !trainerId && !serviceId) return res.status(400).json({ error: 'Nedostaju podaci za izmjenu' });
+    if (!scheduledAt && !trainerId && !serviceId)
+      return res.status(400).json({ error: "Nedostaju podaci za izmjenu" });
 
     // Load appointment and verify ownership
-    const { rows: apptRows } = await db.query('SELECT id, user_id, trainer_id, duration_minutes FROM termini WHERE id = $1', [id]);
-    if (!apptRows.length) return res.status(404).json({ error: 'Termin nije pronađen' });
+    const { rows: apptRows } = await db.query(
+      "SELECT id, user_id, trainer_id, duration_minutes FROM termini WHERE id = $1",
+      [id]
+    );
+    if (!apptRows.length)
+      return res.status(404).json({ error: "Termin nije pronađen" });
     const appt = apptRows[0];
 
     if (String(appt.user_id) !== String(req.user.id)) {
-      return res.status(403).json({ error: 'Zabranjeno' });
+      return res.status(403).json({ error: "Zabranjeno" });
     }
 
-    console.log('PUT /api/appointments/:id', {
+    console.log("PUT /api/appointments/:id", {
       id,
       incomingTrainerId: trainerId,
       incomingScheduledAt: scheduledAt,
     });
 
-    const newTrainerId = trainerId ? Number(trainerId) : Number(appt.trainer_id);
-    const chosenService = serviceId ? getServiceById(serviceId) : null;
-    const newDuration = chosenService ? chosenService.duration : Number(appt.duration_minutes);
-    const newServiceName = chosenService ? chosenService.name : null;
+    const newTrainerId = trainerId
+      ? Number(trainerId)
+      : Number(appt.trainer_id);
+
+    // Always use trainer_type as service
+    const { rows: trainerRows } = await db.query(
+      "SELECT trainer_type FROM treneri WHERE id = $1",
+      [newTrainerId]
+    );
+    const newServiceName = trainerRows.length
+      ? trainerRows[0].trainer_type
+      : "personal";
+    const newDuration = 60; // or customize per trainer_type if you want
 
     let whenIso = null;
     if (scheduledAt) {
       const when = new Date(scheduledAt);
-      if (isNaN(when.getTime())) return res.status(400).json({ error: 'Neispravan datum' });
-      if (when.getMinutes() !== 0 || when.getSeconds() !== 0 || when.getMilliseconds() !== 0) {
-        return res.status(400).json({ error: 'Termini moraju počinjati na puni sat (npr. 16:00)' });
+      if (isNaN(when.getTime()))
+        return res.status(400).json({ error: "Neispravan datum" });
+      if (
+        when.getMinutes() !== 0 ||
+        when.getSeconds() !== 0 ||
+        when.getMilliseconds() !== 0
+      ) {
+        return res
+          .status(400)
+          .json({ error: "Termini moraju počinjati na puni sat (npr. 16:00)" });
       }
       whenIso = when.toISOString();
     }
 
     try {
-      console.log('Updating appointment with', { newTrainerId, whenIso, id, userId: appt.user_id, newDuration, newServiceName });
+      console.log("Updating appointment with", {
+        newTrainerId,
+        whenIso,
+        id,
+        userId: appt.user_id,
+        newDuration,
+        newServiceName,
+      });
 
       // Determine final start time for overlap check
-      const { rows: currentRows } = await db.query('SELECT scheduled_at FROM termini WHERE id = $1', [id]);
+      const { rows: currentRows } = await db.query(
+        "SELECT scheduled_at FROM termini WHERE id = $1",
+        [id]
+      );
       const currentStart = new Date(currentRows[0].scheduled_at);
       const startDate = whenIso ? new Date(whenIso) : currentStart;
       const startIso = startDate.toISOString();
-      const endIso = new Date(startDate.getTime() + newDuration * 60000).toISOString();
+      const endIso = new Date(
+        startDate.getTime() + newDuration * 60000
+      ).toISOString();
 
       const startDateStr = startIso.slice(0, 10);
-      const { open_hour, close_hour } = await getEffectiveWorkHours(newTrainerId, startDateStr);
+      const { open_hour, close_hour } = await getEffectiveWorkHours(
+        newTrainerId,
+        startDateStr
+      );
       const openHour = Number(open_hour ?? 8);
       const closeHour = Number(close_hour ?? 20);
       const startHour = startDate.getHours();
       if (startHour < openHour || startHour > closeHour) {
-        return res.status(400).json({ error: `Termini su dostupni između ${formatHourLabel(openHour)} i ${formatHourLabel(closeHour)}` });
+        return res
+          .status(400)
+          .json({
+            error: `Termini su dostupni između ${formatHourLabel(
+              openHour
+            )} i ${formatHourLabel(closeHour)}`,
+          });
       }
 
       // Overlap checks (exclude this appointment id)
@@ -477,7 +584,8 @@ app.put('/api/appointments/:id', authRequired, async (req, res) => {
          LIMIT 1`,
         [id, newTrainerId, startIso, endIso]
       );
-      if (trainerOverlap.rows.length) return res.status(409).json({ error: 'Termin nije dostupan' });
+      if (trainerOverlap.rows.length)
+        return res.status(409).json({ error: "Termin nije dostupan" });
 
       const userOverlap = await db.query(
         `SELECT 1 FROM termini
@@ -487,19 +595,24 @@ app.put('/api/appointments/:id', authRequired, async (req, res) => {
          LIMIT 1`,
         [id, appt.user_id, startIso, endIso]
       );
-      if (userOverlap.rows.length) return res.status(409).json({ error: 'Već imate termin u odabranom periodu' });
+      if (userOverlap.rows.length)
+        return res
+          .status(409)
+          .json({ error: "Već imate termin u odabranom periodu" });
 
       const { rows: updated } = await db.query(
-        'UPDATE termini SET trainer_id = $1, scheduled_at = COALESCE($2, scheduled_at), duration_minutes = $3, service_name = COALESCE($4, service_name) WHERE id = $5 AND user_id = $6 RETURNING *',
+        "UPDATE termini SET trainer_id = $1, scheduled_at = COALESCE($2, scheduled_at), duration_minutes = $3, service_name = COALESCE($4, service_name) WHERE id = $5 AND user_id = $6 RETURNING *",
         [newTrainerId, whenIso, newDuration, newServiceName, id, appt.user_id]
       );
-      if (!updated.length) return res.status(404).json({ error: 'Termin nije pronađen' });
+      if (!updated.length)
+        return res.status(404).json({ error: "Termin nije pronađen" });
       res.json(updated[0]);
     } catch (e) {
-      console.error('PUT update error:', e);
-      if (e && e.code === '23505') return res.status(409).json({ error: 'Termin nije dostupan' });
+      console.error("PUT update error:", e);
+      if (e && e.code === "23505")
+        return res.status(409).json({ error: "Termin nije dostupan" });
       console.error(e);
-      return res.status(500).json({ error: 'Pogreška poslužitelja' });
+      return res.status(500).json({ error: "Pogreška poslužitelja" });
     }
   } catch (e) {
     console.error(e);
