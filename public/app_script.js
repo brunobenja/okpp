@@ -363,32 +363,27 @@ function updateTimeSlots() {
 
   const appointments = allAppointments; // sve rezervacije (trenere)
   const userAppointments = allUserAppointments; // sve korisnikove rezervacije
-  console.log("updateTimeSlots:", {
-    selectedTrainer,
-    selectedDate,
-    appointments,
-    userAppointments,
-  });
-
+  
   // Trenerovi termini
   const trainerAppointments = allAppointments.filter(
     (a) => String(a.trainer_id) === String(selectedTrainer)
   );
+
   // Blokirana vremena za trenera
-  const bookedTimes = new Set();
-  appointments.forEach((a) => {
-    // ignore the appointment currently being edited
-    if (editingAppointmentId && String(a.id) === String(editingAppointmentId))
-      return;
-    if (String(a.trainer_id) === String(selectedTrainer)) {
-      const apptDate = new Date(a.scheduled_at);
-      const dateStr = apptDate.toISOString().split("T")[0];
-      if (dateStr === selectedDate) {
-        const time = apptDate.toTimeString().slice(0, 5);
-        bookedTimes.add(time);
-      }
-    }
-  });
+   const bookedTimes = new Set();
+   appointments.forEach((a) => {
+     if (editingAppointmentId && String(a.id) === String(editingAppointmentId))
+       return;
+     if (String(a.trainer_id) === String(selectedTrainer)) {
+       const apptDate = new Date(a.scheduled_at);
+       const dateStr = apptDate.toISOString().split("T")[0];
+       if (dateStr === selectedDate) {
+         const time = apptDate.toTimeString().slice(0, 5);
+         bookedTimes.add(time);
+       }
+     }
+   });
+
   // Funkcija za provjeru je li termin zaključan
   function isAppointmentLockedFrontend(scheduledAt) {
     const now = new Date();
@@ -423,18 +418,17 @@ function updateTimeSlots() {
   }
 
   // Blokirana vremena za korisnika
-  const userBookedTimes = new Set();
-  userAppointments.forEach((a) => {
-    // ignore the appointment currently being edited
-    if (editingAppointmentId && String(a.id) === String(editingAppointmentId))
-      return;
-    const apptDate = new Date(a.scheduled_at);
-    const dateStr = apptDate.toISOString().split("T")[0];
-    if (dateStr === selectedDate) {
-      const time = apptDate.toTimeString().slice(0, 5);
-      userBookedTimes.add(time);
-    }
-  });
+ const userBookedTimes = new Set();
+ userAppointments.forEach((a) => {
+   if (editingAppointmentId && String(a.id) === String(editingAppointmentId))
+     return;
+   const apptDate = new Date(a.scheduled_at);
+   const dateStr = apptDate.toISOString().split("T")[0];
+   if (dateStr === selectedDate) {
+     const time = apptDate.toTimeString().slice(0, 5);
+     userBookedTimes.add(time);
+   }
+ });
 
   // Buttoni za sve termine
   allTimeSlots.forEach((time) => {
@@ -445,14 +439,13 @@ function updateTimeSlots() {
     const isTrainerBlocked = bookedTimes.has(time);
     const isUserBlocked = userBookedTimes.has(time);
 
-    // Check for past times and 24h rule
     const candidate = new Date(`${selectedDate}T${time}:00`);
     const now = new Date();
     const ms24 = 24 * 60 * 60 * 1000;
     let inPast = candidate <= now;
     let lessThan24 = candidate - now < ms24;
 
-    // If editing and this slot equals the original appointment, allow it
+    // Ako editiramo i slot je originalni termin, ignoriraj blokadu
     if (editingAppointmentId) {
       const editingAppt =
         (allUserAppointments || []).find(
@@ -473,6 +466,14 @@ function updateTimeSlots() {
     // Determine disabled state
     btn.disabled = isTrainerBlocked || isUserBlocked || inPast || lessThan24;
 
+
+    btn.classList.remove("past-slot", "less-than-24");
+    if (inPast) btn.classList.add("past-slot");
+    else if (lessThan24) btn.classList.add("less-than-24");
+
+    if (selectedTime === time) btn.classList.add("selected");
+    if (!btn.disabled) btn.onclick = () => selectTime(time);
+    
     // Title priority: user conflict > trainer conflict > past > <24h
     if (isUserBlocked) {
       btn.title = "Već imate termin u ovom vremenu";
