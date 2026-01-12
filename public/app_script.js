@@ -389,6 +389,19 @@ function updateTimeSlots() {
       }
     }
   });
+  // Funkcija za provjeru je li termin zaključan
+  function isAppointmentLockedFrontend(scheduledAt) {
+    const now = new Date();
+    const appt = new Date(scheduledAt);
+
+    if (appt <= now) return true;
+
+    const diffMs = appt - now;
+    const hours24 = 24 * 60 * 60 * 1000;
+    return diffMs < hours24;
+  }
+
+  // Funkcija za provjeru je li vrijeme blokirano za trenera
 
   function isTimeBlockedForTrainer(trainerId, date, time) {
     if (!trainerId || !date || !time) return false;
@@ -663,7 +676,6 @@ function renderFilteredUserAppointments() {
       const dateOnly = d.toLocaleDateString("hr-HR");
       const timeOnly = d.toTimeString().slice(0, 5);
       const locked = isAppointmentLocked(a.scheduled_at);
-
       return `
       <tr>
         <td>${dateOnly}</td>
@@ -720,15 +732,15 @@ function renderFilteredAdminAppointments() {
 
   const rows = list
     .map((a) => {
-      return;
-      `<tr>
-                <td>${fmt(a.scheduled_at)}</td>
-                <td>${a.user_name} ${a.user_surname} (${a.user_email})</td>
-                <td>${a.trainer_name} ${a.trainer_surname}</td>
-                <td><button class="del-btn" onclick="showDeleteConfirm(${
-                  a.id
-                }, 'admin')">Obriši</button></td>
-              </tr>`;
+      return `
+        <tr>
+          <td>${fmt(a.scheduled_at)}</td>
+          <td>${a.user_name} ${a.user_surname} (${a.user_email})</td>
+          <td>${a.trainer_name} ${a.trainer_surname}</td>
+          <td><button class="del-btn" onclick="showDeleteConfirm(${
+            a.id
+          }, 'admin')">Obriši</button></td>
+        </tr>`;
     })
     .join("");
   wrap.innerHTML = `<table><thead><tr><th>Vrijeme</th><th>Korisnik</th><th>Trener</th><th>Radnja</th></tr></thead><tbody>${rows}</tbody></table>`;

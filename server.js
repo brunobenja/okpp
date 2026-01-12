@@ -34,6 +34,18 @@ const cookieOptions = {
     console.error("DB init failed:", err);
   }
 })();
+//function is appointment locked
+function isAppointmentLocked(scheduledAt) {
+  const now = new Date();
+  const appt = new Date(scheduledAt);
+
+  if (appt <= now) return true;
+
+  const diffMs = appt - now;
+  const hours24 = 24 * 60 * 60 * 1000;
+
+  return diffMs < hours24;
+}
 
 // ---------------- AUTH HELPERS ----------------
 function authRequired(req, res, next) {
@@ -190,6 +202,12 @@ app.put("/api/appointments/:id", authRequired, async (req, res) => {
     if (req.user.id !== ownerId && !req.user.is_admin)
       return res.status(403).json({ error: "Forbidden" });
 
+     if (isAppointmentLocked(rows[0].scheduled_at)) {
+       return res.status(403).json({
+         error: "Termin je zaključan (manje od 24h ili u prošlosti)",
+       });
+     }
+
     const updated = await db.updateAppointment(id, trainerId, scheduledAt);
 
     // Return joined appointment with trainer info for client convenience
@@ -210,12 +228,22 @@ app.delete("/api/appointments/:id", authRequired, async (req, res) => {
   try {
     const id = req.params.id;
 
-    // Ensure user owns the appointment (or is admin)
-    const { rows } = await db.query("SELECT user_id FROM termini WHERE id = $1", [id]);
-    if (!rows.length) return res.status(404).json({ error: "Not found" });
-    const ownerId = rows[0].user_id;
-    if (req.user.id !== ownerId && !req.user.is_admin)
-      return res.status(403).json({ error: "Forbidden" });
+    // Ensure user owns the appointment
+    const { rows } = await db.query(
+      "SELECT scheduled_at FROM termini WHERE id = $1 AND user_id = $2",
+      [id, req.user.id]
+    );
+
+    if (!rows.length) {
+      return res.status(404).json({ error: "Termin ne postoji" });
+    }
+
+    // ❌ Check lock
+    if (isAppointmentLocked(rows[0].scheduled_at)) {
+      return res.status(403).json({
+        error: "Termin je zaključan (manje od 24h ili u prošlosti)",
+      });
+    }
 
     await db.deleteAppointment(id);
     res.json({ success: true });
