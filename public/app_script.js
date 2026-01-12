@@ -148,7 +148,7 @@ async function loadAllAppointmentsForFiltering() {
 async function loadTrainers() {
   const trainers = await get("/api/trainers");
 
-  const grid = document.getElementById("personal"); 
+  const grid = document.getElementById("personal");
   grid.innerHTML = ""; // očisti postojeće
 
   trainers.forEach((t) => {
@@ -188,7 +188,7 @@ async function loadTrainers() {
 
     const typeLabel = document.createElement("div");
     typeLabel.className = "trainer-type";
-    typeLabel.textContent = t.type; 
+    typeLabel.textContent = t.type;
     typeLabel.style.fontSize = "12px";
     typeLabel.style.color = "#555";
 
@@ -211,11 +211,8 @@ function highlightSelectedTrainer() {
   });
 }
 
-
-
 // Funkcija za odabir trenera
 // preserveSelection: if true, do not clear selectedDate/selectedTime or hide booking UI
-
 
 function selectTrainer(trainerId, el, preserveSelection = false) {
   // U EDIT MODU — NEMA TOGGLE LOGIKE
@@ -261,7 +258,7 @@ function selectTrainer(trainerId, el, preserveSelection = false) {
     if (el) el.classList.add("selected");
   }
 
-/*   if (!preserveSelection) {
+  /*   if (!preserveSelection) {
     selectedDate = null;
     selectedTime = null;
     currentMonth = new Date();
@@ -412,7 +409,6 @@ function updateTimeSlots() {
     });
   }
 
-
   // Blokirana vremena za korisnika
   const userBookedTimes = new Set();
   userAppointments.forEach((a) => {
@@ -552,8 +548,7 @@ function startEditAppointment(id) {
     // Set selected trainer and highlight card
     selectedTrainer = appt.trainer_id;
     highlightSelectedTrainer();
-     document.getElementById("calendarContainer").style.display = "block";
-
+    document.getElementById("calendarContainer").style.display = "block";
 
     // 2️⃣ datum
     const dt = new Date(appt.scheduled_at);
@@ -621,6 +616,20 @@ async function loadAppointments() {
     console.error("Error loading appointments:", e);
   }
 }
+//funkcija za provjeru je li termin zaključan
+function isAppointmentLocked(scheduledAt) {
+  const now = new Date();
+  const apptDate = new Date(scheduledAt);
+
+  // prošlost
+  if (apptDate <= now) return true;
+
+  // manje od 24h
+  const diffMs = apptDate - now;
+  const hours24 = 24 * 60 * 60 * 1000;
+
+  return diffMs < hours24;
+}
 
 function renderFilteredUserAppointments() {
   const wrap = document.getElementById("apptList");
@@ -653,20 +662,29 @@ function renderFilteredUserAppointments() {
       const d = new Date(a.scheduled_at);
       const dateOnly = d.toLocaleDateString("hr-HR");
       const timeOnly = d.toTimeString().slice(0, 5);
+      const locked = isAppointmentLocked(a.scheduled_at);
+
       return `
-              <tr>
-                <td>${dateOnly}</td>
-                <td>${timeOnly}</td>
-                <td>${a.trainer_name} ${a.trainer_surname}</td>
-                <td>
+      <tr>
+        <td>${dateOnly}</td>
+        <td>${timeOnly}</td>
+        <td>${a.trainer_name} ${a.trainer_surname}</td>
+        <td>
+          ${
+            locked
+              ? `<span class="locked-text">Termin zaključan</span>`
+              : `
                   <button class="edit-btn" onclick="startEditAppointment(${a.id})">Uredi</button>
                   <button class="del-btn" onclick="showDeleteConfirm(${a.id}, 'user')">Obriši</button>
-                </td>
-              </tr>`;
-    })
+                `
+          }
+        </td>
+      </tr>`;
+      })
     .join("");
-  wrap.innerHTML = `<table><thead><tr><th>Datum</th><th>Vrijeme</th><th>Trener</th><th>Radnja</th></tr></thead><tbody>${rows}</tbody></table>`;
+    wrap.innerHTML = `<table><thead><tr><th>Datum</th><th>Vrijeme</th><th>Trener</th><th>Radnja</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
+
 //funkcije za admin panel
 async function loadAdminAppointments() {
   if (!isAdmin) return;
