@@ -113,6 +113,12 @@ function closeModal() {
   pendingDeleteId = null;
   pendingDeleteType = null;
 }
+// Funkcija za provjeru je li dan za rehabilitaciju
+function isRehabDay(dateStr) {
+  // Ned=0, Pon=1, Uto=2, Sri=3, Čet=4, Pet=5, Sub=6
+  const day = new Date(dateStr).getDay();
+  return day === 1 || day === 3 || day === 5; // PON, SRI, PET
+}
 // Funkcija za potvrdu brisanja
 async function confirmDeleteFromModal() {
   const deleteId = pendingDeleteId;
@@ -274,6 +280,7 @@ function selectTrainer(trainerId, el, preserveSelection = false) {
   console.log("Odabrani trener:", selectedTrainer);
 }
 
+
 //funkcija za kalendar i odabir datuma
 function renderCalendar() {
   const grid = document.getElementById("calendarGrid");
@@ -281,6 +288,10 @@ function renderCalendar() {
 
   const year = currentMonth.getFullYear();
   const month = currentMonth.getMonth();
+
+  const trainer = allTrainers.find(
+    (t) => String(t.id) === String(selectedTrainer)
+  );
 
   monthYear.textContent = new Date(year, month).toLocaleDateString("hr-HR", {
     month: "long",
@@ -296,50 +307,63 @@ function renderCalendar() {
     div.textContent = label;
     grid.appendChild(div);
   });
+
   // Prvi dan u mjesecu i broj dana u mjesecu
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  // prazna polja prije prvog dana mjeseca
+  // Prazna polja prije prvog dana mjeseca
   for (let i = 0; i < firstDay; i++) {
     const div = document.createElement("div");
     div.className = "calendar-day disabled";
     grid.appendChild(div);
   }
 
-  // dohvacanje dana u trenutnom mjesecu
+  // Dohvaćanje dana u trenutnom mjesecu
   for (let day = 1; day <= daysInMonth; day++) {
     const date = new Date(year, month, day);
     date.setHours(0, 0, 0, 0);
 
-    const dateYear = date.getFullYear();
-    const dateMonth = String(date.getMonth() + 1).padStart(2, "0");
-    const dateDay = String(date.getDate()).padStart(2, "0");
-    const dateStr = `${dateYear}-${dateMonth}-${dateDay}`;
-
+    const dateStr = date.toISOString().split("T")[0];
     const isPast = date < today;
 
     const div = document.createElement("div");
     div.className = "calendar-day";
     div.textContent = day;
 
+    // Označi prošle dane
     if (isPast) {
       div.classList.add("disabled");
-    } else {
-      if (date.getTime() === today.getTime()) {
-        div.classList.add("today");
-      }
-      if (selectedDate === dateStr) {
-        div.classList.add("selected");
-      }
+    }
+
+    // Označi danas
+    if (date.getTime() === today.getTime()) {
+      div.classList.add("today");
+    }
+
+    // Označi odabrani datum
+    if (selectedDate === dateStr) {
+      div.classList.add("selected");
+    }
+
+    // Provjera za rehabilitacijski trening
+    let isDisabledForRehab = false;
+    if (trainer?.type === "rehabilitation" && !isRehabDay(dateStr)) {
+      isDisabledForRehab = true;
+      div.classList.add("disabled");
+    }
+
+    // Postavi onclick samo ako dan nije prošao i nije disabled
+    if (!isPast && !isDisabledForRehab) {
       div.onclick = () => selectDate(dateStr);
     }
 
     grid.appendChild(div);
   }
 }
+
 // Funkcija za odabir datuma
 function selectDate(dateStr) {
   selectedDate = dateStr;
@@ -347,6 +371,16 @@ function selectDate(dateStr) {
   renderCalendar();
   updateTimeSlots();
   updateBookButton();
+  const trainer = allTrainers.find(
+    (t) => String(t.id) === String(selectedTrainer)
+  );
+  if (trainer?.type === "rehabilitation" && !isRehabDay(dateStr)) {
+    alert(
+      "Rehabilitacijski treninzi su dostupni samo ponedjeljkom, srijedom i petkom."
+    );
+    return;
+  }
+
 }
 // Funkcija za update dostupnih termina
 function updateTimeSlots() {
@@ -473,7 +507,7 @@ function updateTimeSlots() {
 
     if (selectedTime === time) btn.classList.add("selected");
     if (!btn.disabled) btn.onclick = () => selectTime(time);
-    
+
     // Title priority: user conflict > trainer conflict > past > <24h
     if (isUserBlocked) {
       btn.title = "Već imate termin u ovom vremenu";
@@ -489,7 +523,6 @@ function updateTimeSlots() {
     }
 
     if (selectedTime === time) btn.classList.add("selected");
-    if (!btn.disabled) btn.onclick = () => selectTime(time);
 
     grid.appendChild(btn);
   });
