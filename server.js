@@ -185,10 +185,10 @@ app.get('/api/admin/trainer/:id/work-hours', authRequired, async (req, res) => {
 // Trainers
 app.get('/api/trainers', authRequired, async (req, res) => {
   try {
-    const { type } = req.query;
+    const { trainer_type } = req.query;
     let trainers;
-    if (type) {
-      trainers = await db.getTrainersByType(type);
+    if (trainer_type) {
+      trainers = await db.getTrainersByType(trainer_type);
     } else {
       trainers = await db.getTrainers();
     }
@@ -227,7 +227,7 @@ app.get('/api/admin/clients', authRequired, async (req, res) => {
 app.post('/api/trainers', authRequired, async (req, res) => {
   if (!req.user.is_admin) return res.status(403).json({ error: 'Zabranjeno' });
   try {
-    const { name, surname, sex, age, profilePic, yearsExperience, userId, trainerType } = req.body || {};
+    const { name, surname, sex, age, profilePic, yearsExperience, userId, trainer_type } = req.body || {};
     if (!name || !surname) return res.status(400).json({ error: 'Nedostaju polja' });
     const trainer = await db.createTrainer(
       name,
@@ -237,7 +237,7 @@ app.post('/api/trainers', authRequired, async (req, res) => {
       profilePic || null,
       yearsExperience ? Number(yearsExperience) : null,
       userId || null,
-      trainerType || null
+      trainer_type || null
     );
     res.json(trainer);
   } catch (e) {
@@ -592,7 +592,7 @@ app.get('/api/admin/appointments', authRequired, async (req, res) => {
 // Admin: delete appointment - THIS MUST COME FIRST
 app.delete('/api/admin/appointments/:id', authRequired, async (req, res) => {
   console.log('Admin delete route hit - User:', req.user);
-  console.log('is_admin value:', req.user.is_admin, 'Type:', typeof req.user.is_admin);
+  console.log('is_admin value:', req.user.is_admin, 'trainer_type:', typeof req.user.is_admin);
   console.log('Appointment ID from params:', req.params.id);
   
   if (req.user.is_admin !== true && req.user.is_admin !== 'true') {
@@ -621,7 +621,7 @@ app.delete('/api/appointments/:id', authRequired, async (req, res) => {
   console.log('User delete route hit');
   try {
     const id = Number(req.params.id);
-    console.log('Delete attempt - ID:', id, 'User ID:', req.user.id, 'Type:', typeof req.user.id);
+    console.log('Delete attempt - ID:', id, 'User ID:', req.user.id, 'trainer_type:', typeof req.user.id);
     if (!id) return res.status(400).json({ error: 'Neispravan ID' });
     
     const { rows } = await db.query('SELECT user_id FROM termini WHERE id = $1', [id]);
