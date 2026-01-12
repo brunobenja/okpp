@@ -66,14 +66,14 @@ async function init() {
       profile_pic TEXT,
       years_experience INT CHECK (years_experience >= 0),
       user_id INT UNIQUE REFERENCES korisnici(id) ON DELETE SET NULL,
-      type TEXT NOT NULL DEFAULT 'personal',
+      trainer_type TEXT NOT NULL DEFAULT 'personal',
       created_at TIMESTAMPTZ DEFAULT now()
     )
   `);
 
   // Add columns if they don't exist (for existing databases)
   await query(`ALTER TABLE treneri ADD COLUMN IF NOT EXISTS profile_pic TEXT`);
-  await query(`ALTER TABLE treneri ADD COLUMN IF NOT EXISTS type TEXT`);
+  await query(`ALTER TABLE treneri ADD COLUMN IF NOT EXISTS trainer_type TEXT`);
   await query(
     `ALTER TABLE treneri ADD COLUMN IF NOT EXISTS years_experience INT`
   );
@@ -157,39 +157,39 @@ async function createTrainer(
   surname,
   sex,
   age,
-  profilePic = null,
-  yearsExperience = null,
-  userId = null,
-  type = "personal"
+  pic = null,
+  years_experience = null,
+  user_id = null,
+  trainer_type = "personal"
 ) {
   const { rows } = await query(
-    "INSERT INTO treneri (name, surname, sex, age, profile_pic, years_experience, user_id,type) VALUES ($1, $2, $3, $4, $5, $6, $7,$8) RETURNING *",
-    [name, surname, sex, age, profilePic, yearsExperience, userId, type]
+    "INSERT INTO treneri (name, surname, sex, age, profile_pic, years_experience, user_id,trainer_type) VALUES ($1, $2, $3, $4, $5, $6, $7,$8) RETURNING *",
+    [name, surname, sex, age, pic, years_experience, user_id, trainer_type]
   );
   return rows[0];
 }
 async function getTrainers() {
   const { rows } = await query(
-    "SELECT id, name, surname, sex, age, years_experience, profile_pic, type FROM treneri"
+    "SELECT id, name, surname, sex, age, years_experience, profile_pic, trainer_type FROM treneri"
   );
   return rows;
 }
 
-async function bookAppointment(userId, trainerId, scheduledAt) {
+async function bookAppointment(user_id, trainerId, scheduledAt) {
   const { rows } = await query(
     "INSERT INTO termini (user_id, trainer_id, scheduled_at) VALUES ($1, $2, $3) RETURNING *",
-    [userId, trainerId, scheduledAt]
+    [user_id, trainerId, scheduledAt]
   );
   return rows[0];
 }
-async function getAppointmentsForUser(userId) {
+async function getAppointmentsForUser(user_id) {
   const { rows } = await query(
     `SELECT a.id, a.scheduled_at, t.name AS trainer_name, t.surname AS trainer_surname
      FROM termini a
      JOIN treneri t ON t.id = a.trainer_id
      WHERE a.user_id = $1
      ORDER BY a.scheduled_at DESC`,
-    [userId]
+    [user_id]
   );
   return rows;
 }
@@ -220,19 +220,6 @@ async function updateAppointment(id, trainerId, scheduledAt) {
   return rows[0];
 }
 
-function isAppointmentLocked(scheduledAt) {
-  const now = new Date();
-  const appt = new Date(scheduledAt);
-
-  if (appt <= now) return true;
-
-  const diffMs = appt - now;
-  const hours24 = 24 * 60 * 60 * 1000;
-
-  return diffMs < hours24;
-}
-
-module.exports.isAppointmentLocked = isAppointmentLocked;
 
 
 
