@@ -30,6 +30,10 @@ body {
 .main-content.history-active #userApptPanel {
   max-width: 100%;
 }
+#servicePanel {
+  display: none !important;
+}
+
 
 @media (max-width: 1024px) {
   .main-content {
