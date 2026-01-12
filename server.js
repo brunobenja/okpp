@@ -122,8 +122,8 @@ app.get('/api/me', authRequired, async (req, res) => {
 
 app.get('/api/user', authRequired, async (req, res) => {
   try {
-    const userId = parseInt(req.user.id);
-    const user = await db.getUserById(userId);
+    const user_id = parseInt(req.user.id);
+    const user = await db.getUserById(user_id);
     if (!user) return res.status(404).json({ error: 'Korisnik nije pronađen' });
     res.json({ id: user.id, name: user.name, surname: user.surname, email: user.email });
   } catch (e) {
@@ -229,16 +229,16 @@ app.get('/api/admin/clients', authRequired, async (req, res) => {
 app.post('/api/trainers', authRequired, async (req, res) => {
   if (!req.user.is_admin) return res.status(403).json({ error: 'Zabranjeno' });
   try {
-    const { name, surname, sex, age, profilePic, yearsExperience, userId, trainer_type } = req.body || {};
+    const { name, surname, sex, age, pic, years_experience, user_id, trainer_type } = req.body || {};
     if (!name || !surname) return res.status(400).json({ error: 'Nedostaju polja' });
     const trainer = await db.createTrainer(
       name,
       surname,
       sex || null,
       age ? Number(age) : null,
-      profilePic || null,
-      yearsExperience ? Number(yearsExperience) : null,
-      userId || null,
+      pic || null,
+      years_experience ? Number(years_experience) : null,
+      user_id || null,
       trainer_type || null
     );
     res.json(trainer);
@@ -377,12 +377,12 @@ app.post('/api/appointments', authRequired, async (req, res) => {
 app.post('/api/admin/appointments', authRequired, async (req, res) => {
   if (!isAdminUser(req.user)) return res.status(403).json({ error: 'Zabranjeno' });
   try {
-    const { userId, trainerId, scheduledAt, serviceId } = req.body || {};
-    if (!userId || !trainerId || !scheduledAt)
+    const { user_id, trainerId, scheduledAt, serviceId } = req.body || {};
+    if (!user_id || !trainerId || !scheduledAt)
       return res.status(400).json({ error: "Nedostaju polja" });
 
     // Verify user exists
-    const user = await db.getUserById(Number(userId));
+    const user = await db.getUserById(Number(user_id));
     if (!user) return res.status(404).json({ error: "Korisnik nije pronađen" });
 
     const when = new Date(scheduledAt);
@@ -452,7 +452,7 @@ app.post('/api/admin/appointments', authRequired, async (req, res) => {
          AND scheduled_at < $3
          AND (scheduled_at + (duration_minutes || ' minutes')::interval) > $2
        LIMIT 1`,
-      [Number(userId), startIso, endIso]
+      [Number(user_id), startIso, endIso]
     );
     if (userOverlap.rows.length)
       return res
@@ -460,7 +460,7 @@ app.post('/api/admin/appointments', authRequired, async (req, res) => {
         .json({ error: "Korisnik već ima termin u odabranom periodu" });
 
     const appt = await db.bookAppointmentWithDetails(
-      Number(userId),
+      Number(user_id),
       Number(trainerId),
       when.toISOString(),
       duration,
@@ -540,7 +540,7 @@ app.put('/api/appointments/:id', authRequired, async (req, res) => {
         newTrainerId,
         whenIso,
         id,
-        userId: appt.user_id,
+        user_id: appt.user_id,
         newDuration,
         newServiceName,
       });
@@ -751,11 +751,11 @@ app.delete('/api/appointments/:id', authRequired, async (req, res) => {
     if (!rows.length) return res.status(404).json({ error: 'Termin nije pronađen' });
     
     // Convert database user_id to string for comparison
-    const dbUserId = String(rows[0].user_id);
-    const tokenUserId = String(req.user.id);
-    console.log('Comparing dbUserId:', dbUserId, 'with tokenUserId:', tokenUserId, 'Equal?', dbUserId === tokenUserId);
+    const dbuser_id = String(rows[0].user_id);
+    const tokenuser_id = String(req.user.id);
+    console.log('Comparing dbuser_id:', dbuser_id, 'with tokenuser_id:', tokenuser_id, 'Equal?', dbuser_id === tokenuser_id);
     
-    if (dbUserId !== tokenUserId) {
+    if (dbuser_id !== tokenuser_id) {
       console.log('Ownership check FAILED');
       return res.status(403).json({ error: 'Zabranjeno' });
     }
