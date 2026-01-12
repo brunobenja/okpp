@@ -227,7 +227,7 @@ function selectTrainer(trainerId, el, preserveSelection = false) {
     });
 
     if (el) el.classList.add("selected");
-    
+
     // Ako je odabrano vrijeme zauzeto za novog trenera – resetiraj samo vrijeme
     if (
       selectedDate &&
@@ -239,6 +239,8 @@ function selectTrainer(trainerId, el, preserveSelection = false) {
 
     document.getElementById("calendarContainer").style.display = "block";
     renderCalendar();
+    updateTimeSlots();
+    updateBookButton();
 
     console.log("Edit mode – trener označen:", selectedTrainer);
     return;
