@@ -198,6 +198,19 @@ async function loadTrainers() {
     grid.appendChild(card);
   });
 }
+function highlightSelectedTrainer() {
+  if (!selectedTrainer) return;
+
+  document.querySelectorAll(".trainer-card").forEach((card) => {
+    const id = card.dataset.trainerId;
+    if (String(id) === String(selectedTrainer)) {
+      card.classList.add("selected");
+    } else {
+      card.classList.remove("selected");
+    }
+  });
+}
+
 
 
 // Funkcija za odabir trenera
@@ -507,28 +520,22 @@ function startEditAppointment(id) {
 
     // Set selected trainer and highlight card
     selectedTrainer = appt.trainer_id;
-    // try attribute selector first, then fallback to dataset comparison
-    let card = document.querySelector(`[data-trainer-id='${selectedTrainer}']`);
-    if (!card) {
-      const cards = Array.from(document.querySelectorAll(".trainer-card"));
-      card = cards.find(
-        (c) => String(c.dataset.trainerId) === String(selectedTrainer)
-      );
-    }
-    // If still not found, just call selectTrainer without element to ensure UI shows
-    selectTrainer(selectedTrainer, card || null, true);
+    highlightSelectedTrainer();
+     document.getElementById("calendarContainer").style.display = "block";
 
-    // Set date and time
+
+    // 2️⃣ datum
     const dt = new Date(appt.scheduled_at);
     const year = dt.getFullYear();
     const month = String(dt.getMonth() + 1).padStart(2, "0");
     const day = String(dt.getDate()).padStart(2, "0");
     selectedDate = `${year}-${month}-${day}`;
-    selectedTime = dt.toTimeString().slice(0, 5);
-
-    // Ensure calendar shows the month and selected day
     currentMonth = new Date(year, dt.getMonth(), 1);
     renderCalendar();
+
+    // 3️⃣ vrijeme
+    selectedTime = dt.toTimeString().slice(0, 5);
+    document.getElementById("timeSlots").style.display = "block";
     updateTimeSlots();
     updateBookButton();
 
@@ -865,6 +872,7 @@ document.getElementById("clearFiltersBtn")?.addEventListener("click", () => {
       await loadAllAppointmentsForFiltering();
       console.log("All appointments loaded");
       await loadTrainers();
+      highlightSelectedTrainer();
       console.log("Trainers loaded");
       await loadAppointments();
       console.log("User appointments loaded");
