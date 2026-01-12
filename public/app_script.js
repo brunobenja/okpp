@@ -740,6 +740,7 @@ async function loadAllAppointmentsForFiltering() {
   allAppointments = await get("/api/appointments/all");
 }
 
+
 async function loadTrainers() {
   try {
     let url = "/api/trainers";
@@ -749,7 +750,7 @@ async function loadTrainers() {
     //   params.push(`serviceId=${filterServiceId}`);
     // }
     if (filterTrainerType) {
-      params.push(`type=${encodeURIComponent(filterTrainerType)}`);
+      params.push(`trainer_type=${encodeURIComponent(filterTrainerType)}`);
     }
     if (params.length > 0) {
       url += "?" + params.join("&");
