@@ -767,6 +767,10 @@ function renderFilteredTrainers() {
   grid.innerHTML = "";
 
   let trainers = [...allTrainers];
+  const filterType = document.getElementById("filterTrainerType")?.value;
+  if (filterType) {
+    trainers = trainers.filter((t) => t.trainer_type === filterType);
+  }
 
   if (trainers.length === 0) {
     grid.innerHTML =
@@ -828,6 +832,9 @@ function renderFilteredTrainers() {
     grid.appendChild(card);
   });
 }
+document
+  .getElementById("filterTrainerType")
+  ?.addEventListener("change", renderFilteredTrainers);
 
 async function selectTrainer(trainerId, cardEl) {
   selectedTrainer = trainerId;
