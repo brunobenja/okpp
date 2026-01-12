@@ -170,8 +170,9 @@ async function createTrainer(
 }
 async function getTrainers() {
   const { rows } = await query(
-    "SELECT id, name, surname, sex, age, years_experience, profile_pic, trainer_type FROM treneri"
+    "SELECT * FROM treneri"
   );
+  console.log(rows);
   return rows;
 }
 
