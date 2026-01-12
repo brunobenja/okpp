@@ -183,7 +183,7 @@ app.get('/api/admin/trainer/:id/work-hours', authRequired, async (req, res) => {
 });
 
 // Trainers
-app.get('/api/trainers', authRequired, async (req, res) => {
+app.get("/api/trainers", authRequired, async (req, res) => {
   try {
     const { trainer_type } = req.query;
     let trainers;
@@ -192,12 +192,20 @@ app.get('/api/trainers', authRequired, async (req, res) => {
     } else {
       trainers = await db.getTrainers();
     }
-    res.json(trainers);
+
+    // Attach services from in-memory mapping
+    const trainersWithServices = trainers.map((tr) => ({
+      ...tr,
+      services: TRAINER_SERVICES[tr.id] || [],
+    }));
+
+    res.json(trainersWithServices);
   } catch (e) {
     console.error(e);
-    res.status(500).json({ error: 'Pogreška poslužitelja' });
+    res.status(500).json({ error: "Pogreška poslužitelja" });
   }
 });
+
 
 app.get('/api/trainer-types', authRequired, async (req, res) => {
   try {
