@@ -2109,10 +2109,10 @@ document
       if (filterTrainerType) {
         const trainerTypes = await get("/api/trainer-types");
         filterTrainerType.innerHTML = '<option value="">Svi tipovi</option>';
-        trainerTypes.forEach((type) => {
+        trainerTypes.forEach((trainer_type) => {
           const opt = document.createElement("option");
-          opt.value = type;
-          opt.textContent = type;
+          opt.value = trainer_type;
+          opt.textContent = trainer_type;
           filterTrainerType.appendChild(opt);
         });
       }
