@@ -193,6 +193,13 @@ async function getAppointmentsForUser(user_id) {
   );
   return rows;
 }
+async function getWorkHours() {
+  const { rows } = await query('SELECT open_hour, close_hour FROM work_hours LIMIT 1');
+  if (rows.length) return rows[0];
+  return { open_hour: 8, close_hour: 20 }; // fallback
+}
+
+
 
 async function getAllAppointments() {
   const { rows } = await query(
@@ -221,10 +228,6 @@ async function updateAppointment(id, trainerId, scheduledAt) {
 }
 
 
-
-
-
-
 module.exports = {
   pool,
   query,
@@ -236,6 +239,7 @@ module.exports = {
   createTrainer,
   getTrainers,
   bookAppointment,
+  getWorkHours,
   getAppointmentsForUser,
   getAllAppointments,
   deleteAppointment,
