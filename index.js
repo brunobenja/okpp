@@ -182,6 +182,25 @@ async function bookAppointment(user_id, trainerId, scheduledAt) {
   );
   return rows[0];
 }
+async function bookAppointmentWithDetails(
+  userId,
+  trainerId,
+  scheduledAt,
+  duration,
+  serviceName
+) {
+  const { rows } = await query(
+    `INSERT INTO termini (user_id, trainer_id, scheduled_at, duration_minutes, service_name)
+     VALUES ($1, $2, $3, $4, $5)
+     RETURNING *`,
+    [userId, trainerId, scheduledAt, duration, serviceName]
+  );
+  return rows[0];
+}
+
+
+
+
 async function getAppointmentsForUser(user_id) {
   const { rows } = await query(
     `SELECT a.id, a.scheduled_at, t.name AS trainer_name, t.surname AS trainer_surname
@@ -239,9 +258,11 @@ module.exports = {
   createTrainer,
   getTrainers,
   bookAppointment,
+  bookAppointmentWithDetails,
   getWorkHours,
   getAppointmentsForUser,
   getAllAppointments,
   deleteAppointment,
   updateAppointment,
 };
+
