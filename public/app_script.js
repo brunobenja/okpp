@@ -227,6 +227,15 @@ function selectTrainer(trainerId, el, preserveSelection = false) {
     });
 
     if (el) el.classList.add("selected");
+    
+    // Ako je odabrano vrijeme zauzeto za novog trenera – resetiraj samo vrijeme
+    if (
+      selectedDate &&
+      selectedTime &&
+      isTimeBlockedForTrainer(selectedTrainer, selectedDate, selectedTime)
+    ) {
+      selectedTime = null;
+    }
 
     document.getElementById("calendarContainer").style.display = "block";
     renderCalendar();
@@ -250,11 +259,11 @@ function selectTrainer(trainerId, el, preserveSelection = false) {
     if (el) el.classList.add("selected");
   }
 
-  if (!preserveSelection) {
+/*   if (!preserveSelection) {
     selectedDate = null;
     selectedTime = null;
     currentMonth = new Date();
-  }
+  } */
 
   // Prikaži kalendar i resetiraj time slotove
   document.getElementById("calendarContainer").style.display = "block";
@@ -381,6 +390,26 @@ function updateTimeSlots() {
       }
     }
   });
+
+  function isTimeBlockedForTrainer(trainerId, date, time) {
+    if (!trainerId || !date || !time) return false;
+
+    return allAppointments.some((a) => {
+      if (editingAppointmentId && String(a.id) === String(editingAppointmentId))
+        return false;
+
+      const apptDate = new Date(a.scheduled_at);
+      const dateStr = apptDate.toISOString().split("T")[0];
+      const timeStr = apptDate.toTimeString().slice(0, 5);
+
+      return (
+        String(a.trainer_id) === String(trainerId) &&
+        dateStr === date &&
+        timeStr === time
+      );
+    });
+  }
+
 
   // Blokirana vremena za korisnika
   const userBookedTimes = new Set();
