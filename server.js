@@ -703,7 +703,7 @@ async function ensureSampleTrainers() {
 (async () => {
   await db.init();
   await db.seedAdmin();
-  await db.seedTestData();
+  //await db.seedTestData();
   await ensureSampleTrainers();
   app.listen(PORT, () => console.log(`Server listening on http://localhost:${PORT}`));
 })();
