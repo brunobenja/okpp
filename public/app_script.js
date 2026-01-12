@@ -481,9 +481,28 @@ function updateTimeSlots() {
 
     const candidate = new Date(`${selectedDate}T${time}:00`);
     const now = new Date();
+
+    // Pretvori oba u UTC ms
+    const candidateMs = Date.UTC(
+      candidate.getFullYear(),
+      candidate.getMonth(),
+      candidate.getDate(),
+      candidate.getHours(),
+      candidate.getMinutes(),
+      0
+    );
+    const nowMs = Date.UTC(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+      now.getHours(),
+      now.getMinutes(),
+      0
+    );
+
     const ms24 = 24 * 60 * 60 * 1000;
-    let inPast = candidate <= now;
-    let lessThan24 = candidate - now < ms24;
+    let inPast = candidateMs <= nowMs;
+    let lessThan24 = candidateMs - nowMs < ms24;
 
     // Ako editiramo i slot je originalni termin, ignoriraj blokadu
     if (editingAppointmentId) {
