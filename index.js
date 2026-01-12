@@ -63,7 +63,7 @@ async function init() {
       surname TEXT NOT NULL,
       sex TEXT,
       age INT CHECK (age > 0),
-      profile_pic TEXT,
+      pic TEXT,
       years_experience INT CHECK (years_experience >= 0),
       user_id INT UNIQUE REFERENCES korisnici(id) ON DELETE SET NULL,
       trainer_type TEXT NOT NULL DEFAULT 'personal',
@@ -72,7 +72,7 @@ async function init() {
   `);
 
   // Add columns if they don't exist (for existing databases)
-  await query(`ALTER TABLE treneri ADD COLUMN IF NOT EXISTS profile_pic TEXT`);
+  await query(`ALTER TABLE treneri ADD COLUMN IF NOT EXISTS pic TEXT`);
   await query(`ALTER TABLE treneri ADD COLUMN IF NOT EXISTS trainer_type TEXT`);
   await query(
     `ALTER TABLE treneri ADD COLUMN IF NOT EXISTS years_experience INT`
@@ -163,7 +163,7 @@ async function createTrainer(
   trainer_type = "personal"
 ) {
   const { rows } = await query(
-    "INSERT INTO treneri (name, surname, sex, age, profile_pic, years_experience, user_id,trainer_type) VALUES ($1, $2, $3, $4, $5, $6, $7,$8) RETURNING *",
+    "INSERT INTO treneri (name, surname, sex, age, pic, years_experience, user_id,trainer_type) VALUES ($1, $2, $3, $4, $5, $6, $7,$8) RETURNING *",
     [name, surname, sex, age, pic, years_experience, user_id, trainer_type]
   );
   return rows[0];
