@@ -35,6 +35,10 @@ async function query(text, params) {
   );
   return res;
 }
+async function cancelAppointment(id) {
+  return await pool.query("DELETE FROM termini WHERE id = $1", [id]);
+}
+
 
 // Create required tables
 async function init() {
@@ -235,9 +239,25 @@ async function getAllAppointments() {
   return rows;
 }
 
-async function deleteAppointment(id) {
-  await query("DELETE FROM termini WHERE id = $1", [id]);
+async function cancelAppointment(id, by = "user") {
+  if (!id) throw new Error("ID required");
+
+  if (by === "admin") {
+    // Admin može obrisati bilo koji termin
+    return await query("DELETE FROM termini WHERE id = $1", [id]);
+  } else {
+    // User može obrisati samo svoje termine
+    // by ovdje očekuje user ID
+    const { rows } = await query(
+      "DELETE FROM termini WHERE id = $1 AND user_id = $2 RETURNING *",
+      [id, by]
+    );
+    if (!rows.length)
+      throw new Error("Termin nije pronađen ili nemate pravo brisanja");
+    return rows[0];
+  }
 }
+
 
 async function updateAppointment(id, trainerId, scheduledAt) {
   const { rows } = await query(
@@ -263,7 +283,7 @@ module.exports = {
   getWorkHours,
   getAppointmentsForUser,
   getAllAppointments,
-  deleteAppointment,
+  cancelAppointment,
   updateAppointment,
 };
 
