@@ -116,9 +116,8 @@ function closeModal() {
 }
 // Funkcija za provjeru je li dan za rehabilitaciju
 function isRehabDay(dateStr) {
-  // Ned=0, Pon=1, Uto=2, Sri=3, Čet=4, Pet=5, Sub=6
   const day = new Date(dateStr).getDay();
-  return day === 1 || day === 3 || day === 5; // PON, SRI, PET
+  return day === 0 || day === 2 || day === 4; // PON, SRI, PET
 }
 // Funkcija za potvrdu brisanja
 async function confirmDeleteFromModal() {
