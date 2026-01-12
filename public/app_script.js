@@ -28,13 +28,12 @@ let workHours = { open_hour: 8, close_hour: 20 };
 let workHoursSource = "global";
 let adminReserveHours = { open_hour: 8, close_hour: 20 };
 let allTimeSlots = [];
-const dayLabels = ["Ned", "Pon", "Uto", "Sri", "Čet", "Pet", "Sub"];
+const dayLabels = ["Pon", "Uto", "Sri", "Čet", "Pet", "Sub", "Ned"];
 let historyMode = false;
 let adminServiceChart = null;
 let adminTrainerChart = null;
 let peakHoursChart = null;
 let cancellationsChart = null;
-
 function padHour(n) {
   return String(n).padStart(2, "0");
 }
@@ -878,7 +877,8 @@ function renderCalendar() {
     grid.appendChild(div);
   });
 
-  const firstDay = new Date(year, month, 1).getDay();
+  let firstDay = new Date(year, month, 1).getDay();
+  firstDay = firstDay === 0 ? 6 : firstDay - 1;
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -1214,7 +1214,6 @@ function renderFilteredAdminAppointments() {
     wrap.textContent = "Nema termina koji odgovaraju filtrima.";
     return;
   }
-
   const rows = list
     .map((a) => {
       return `<tr>
@@ -1229,7 +1228,6 @@ function renderFilteredAdminAppointments() {
     .join("");
   wrap.innerHTML = `<table><thead><tr><th>Vrijeme</th><th>Korisnik</th><th>Trener</th><th>Radnja</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
-
 async function populateAdminTrainerFilter() {
   const trainers = await get("/api/trainers");
   const select = document.getElementById("adminTrainerFilter");
