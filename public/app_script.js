@@ -28,7 +28,8 @@ const allTimeSlots = [
   "19:00",
   "20:00",
 ];
-const dayLabels = ["Ned", "Pon", "Uto", "Sri", "Čet", "Pet", "Sub"];
+const dayLabels = ["Pon", "Uto", "Sri", "Čet", "Pet", "Sub", "Ned"];
+
 
 async function get(path) {
   const res = await fetch(path);
@@ -313,7 +314,9 @@ function renderCalendar() {
   });
 
   // Prvi dan u mjesecu i broj dana u mjesecu
-  const firstDay = new Date(year, month, 1).getDay();
+  let firstDay = new Date(year, month, 1).getDay(); // 0-6, nedjelja=0
+  firstDay = firstDay === 0 ? 6 : firstDay - 1;
+
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const today = new Date();
   today.setHours(0, 0, 0, 0);
