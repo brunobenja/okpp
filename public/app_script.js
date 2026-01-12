@@ -990,36 +990,31 @@ function updateTimeSlots() {
     const slotEnd = new Date(slotStart.getTime() + selDuration * 60000);
     const now = new Date();
     const diffMs = slotStart - now;
-    const lessThan24 = diffMs > 0 && diffMs < 24 * 60 * 60 * 1000;
 
-    let isTrainerBlocked = false;
-    allAppointments.forEach((a) => {
-      if (a.trainer_id == selectedTrainer) {
-        const apptDate = new Date(a.scheduled_at);
-        const apptDateStr = apptDate.toISOString().split("T")[0];
-        if (apptDateStr === selectedDate) {
-          const apptStart = apptDate;
-          const apptEnd = new Date(
-            apptStart.getTime() + (a.duration_minutes || 60) * 60000
-          );
-          if (overlaps(slotStart, slotEnd, apptStart, apptEnd))
-            isTrainerBlocked = true;
-        }
-      }
+    // koristi let da možemo promijeniti vrijednost ako editiramo termin
+    let lessThan24 = diffMs > 0 && diffMs < 24 * 60 * 60 * 1000;
+
+    // Provjera preklapanja sa trenerovim terminima
+    let isTrainerBlocked = allAppointments.some((a) => {
+      if (a.trainer_id != selectedTrainer) return false;
+      const apptDate = new Date(a.scheduled_at);
+      if (apptDate.toISOString().split("T")[0] !== selectedDate) return false;
+      const apptStart = apptDate;
+      const apptEnd = new Date(
+        apptStart.getTime() + (a.duration_minutes || 60) * 60000
+      );
+      return overlaps(slotStart, slotEnd, apptStart, apptEnd);
     });
 
-    let isUserBlocked = false;
-    allUserAppointments.forEach((a) => {
+    // Provjera preklapanja sa korisnikovim terminima
+    let isUserBlocked = allUserAppointments.some((a) => {
       const apptDate = new Date(a.scheduled_at);
-      const apptDateStr = apptDate.toISOString().split("T")[0];
-      if (apptDateStr === selectedDate) {
-        const apptStart = apptDate;
-        const apptEnd = new Date(
-          apptStart.getTime() + (a.duration_minutes || 60) * 60000
-        );
-        if (overlaps(slotStart, slotEnd, apptStart, apptEnd))
-          isUserBlocked = true;
-      }
+      if (apptDate.toISOString().split("T")[0] !== selectedDate) return false;
+      const apptStart = apptDate;
+      const apptEnd = new Date(
+        apptStart.getTime() + (a.duration_minutes || 60) * 60000
+      );
+      return overlaps(slotStart, slotEnd, apptStart, apptEnd);
     });
 
     // Ako editiramo i slot je originalni termin, ignoriraj lessThan24
@@ -1031,6 +1026,7 @@ function updateTimeSlots() {
         allAppointments.find(
           (a) => String(a.id) === String(editingAppointmentId)
         );
+
       if (
         editingAppt &&
         new Date(editingAppt.scheduled_at).toISOString() ===
@@ -1040,9 +1036,10 @@ function updateTimeSlots() {
       }
     }
 
+    // Button disabled ako je user/trainer zauzet ili <24h
     btn.disabled = isTrainerBlocked || isUserBlocked || lessThan24;
 
-    // Tooltip prioriteta: user > trainer > <24h
+    // Tooltip
     if (isUserBlocked) {
       btn.title = "Već imate termin u ovom periodu";
     } else if (isTrainerBlocked) {
@@ -1059,6 +1056,7 @@ function updateTimeSlots() {
 
     grid.appendChild(btn);
   });
+
 }
 
 
