@@ -82,13 +82,21 @@ async function fetchTrainerWorkHours(trainerId, dateStr = "") {
   try {
     const query = dateStr ? `?date=${encodeURIComponent(dateStr)}` : "";
     const res = await get(`/api/trainer/${trainerId}/work-hours${query}`);
-    console.log("fetchTrainerWorkHours result:", res);
+    console.log(
+      "Trainer work hours fetched for trainer",
+      trainerId,
+      "date",
+      dateStr,
+      ":",
+      res
+    );
     return res;
   } catch (e) {
     console.warn("Ne mogu učitati radno vrijeme trenera", e);
     return null;
   }
 }
+
 
 async function applyTrainerHours(trainerId, dateStr = "") {
   console.log("applyTrainerHours called", { trainerId, dateStr });
@@ -960,19 +968,16 @@ function renderCalendar() {
 }
 
 async function selectDate(dateStr) {
-    console.log(
-      "selectDate clicked:",
-      dateStr,
-      "selectedTrainer:",
-      selectedTrainer
-    );
+  console.log("Date clicked:", dateStr, "selectedTrainer:", selectedTrainer);
   selectedDate = dateStr;
   selectedTime = null;
-  await applyTrainerHours(selectedTrainer, dateStr);
+  const hours = await applyTrainerHours(selectedTrainer, dateStr);
+  console.log("Work hours applied:", workHours);
   renderCalendar();
   updateTimeSlots();
   updateBookButton();
 }
+
 
 function updateTimeSlots() {
   const container = document.getElementById("timeSlots");
@@ -1071,7 +1076,11 @@ function updateTimeSlots() {
 
     grid.appendChild(btn);
   });
-
+  console.log("Updating time slots...");
+  console.log("selectedTrainer:", selectedTrainer, "selectedDate:", selectedDate, "selectedServiceId:", selectedServiceId);
+  console.log("allTimeSlots:", allTimeSlots);
+  console.log("allAppointments:", allAppointments);
+  console.log("allUserAppointments:", allUserAppointments);
 }
 
 
