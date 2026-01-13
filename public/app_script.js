@@ -99,7 +99,12 @@ async function fetchTrainerWorkHours(trainerId, dateStr = "") {
 
 
 async function applyTrainerHours(trainerId, dateStr = "") {
-  console.log("applyTrainerHours called", { trainerId, dateStr });
+  console.log(
+    "Applying work hours for trainer",
+    trainerId,
+    "and date",
+    dateStr
+  );  
   const hours = trainerId
     ? await fetchTrainerWorkHours(trainerId, dateStr)
     : null;
@@ -119,7 +124,7 @@ async function applyTrainerHours(trainerId, dateStr = "") {
     workHours = { ...defaultWorkHours };
     workHoursSource = "global";
   }
-    console.log("Work hours applied:", workHours, "source:", workHoursSource);
+  console.log("Work hours set to:", workHours, "source:", workHoursSource);
   buildTimeSlots();
   updateWorkHoursDisplay();
   if (selectedDate) updateTimeSlots();
