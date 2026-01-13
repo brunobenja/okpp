@@ -83,17 +83,21 @@ async function fetchTrainerWorkHours(trainerId, dateStr = "") {
     console.warn("Ne mogu učitati radno vrijeme trenera", e);
     return null;
   }
+  console.log(await fetchTrainerWorkHours(selectedTrainer, ""));
 }
 
 async function applyTrainerHours(trainerId, dateStr = "") {
+  console.log("applyTrainerHours called", { trainerId, dateStr });
   const hours = trainerId
     ? await fetchTrainerWorkHours(trainerId, dateStr)
     : null;
+    console.log("Fetched trainer hours:", hours);
   if (
     hours &&
     hours.open_hour !== undefined &&
     hours.close_hour !== undefined
   ) {
+    console.log("No trainer hours found, using default 8-20");
     workHours = {
       open_hour: Number(hours.open_hour),
       close_hour: Number(hours.close_hour),
@@ -103,6 +107,7 @@ async function applyTrainerHours(trainerId, dateStr = "") {
     workHours = { ...defaultWorkHours };
     workHoursSource = "global";
   }
+    console.log("Work hours applied:", workHours, "source:", workHoursSource);
   buildTimeSlots();
   updateWorkHoursDisplay();
   if (selectedDate) updateTimeSlots();
@@ -951,6 +956,12 @@ function renderCalendar() {
 }
 
 async function selectDate(dateStr) {
+    console.log(
+      "selectDate clicked:",
+      dateStr,
+      "selectedTrainer:",
+      selectedTrainer
+    );
   selectedDate = dateStr;
   selectedTime = null;
   await applyTrainerHours(selectedTrainer, dateStr);
