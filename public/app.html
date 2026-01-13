@@ -901,6 +901,10 @@
           <label>&nbsp;</label>
           <button class="clear-filters-btn" id="clearUserFiltersBtn">Očisti filtre</button>
         </div>
+        <div class="filter-group">
+          <label>&nbsp;</label>
+          <button class="del-btn" id="cancelAllUserApptsBtn" title="Otkaži sve buduće termine (>=24h)">Otkaži sve buduće termine</button>
+        </div>
       </div>
       <div id="apptList">Učitavanje…</div>
       </div>
@@ -1002,6 +1006,10 @@
         <div class="filter-group">
           <label>&nbsp;</label>
           <button class="clear-filters-btn" id="clearFiltersBtn">Očisti filtre</button>
+        </div>
+        <div class="filter-group">
+          <label>&nbsp;</label>
+          <button class="del-btn" id="cancelAllAdminApptsBtn" title="Otkaži sve buduće termine (admin)">Otkaži sve buduće termine</button>
         </div>
       </div>
       <div id="adminApptList">Učitavanje…</div>
@@ -1751,6 +1759,23 @@
             await loadAllAppointmentsForFiltering();
             await loadAppointments();
             updateTimeSlots();
+          } else if (deleteType === 'user-all') {
+            console.log('Bulk cancelling user appointments');
+            const result = await post('/api/appointments/cancel-all', {});
+            await loadAllAppointmentsForFiltering();
+            await loadAppointments();
+            updateTimeSlots();
+            showModal('Uspjeh', `Otkazano: ${result.cancelled}, Preskočeno: ${result.skipped}` , 'success-modal');
+            setTimeout(() => closeModal(), 2500);
+            return;
+          } else if (deleteType === 'admin-all') {
+            console.log('Bulk cancelling admin appointments');
+            const result = await post('/api/admin/appointments/cancel-all', {});
+            await loadAdminAppointments();
+            await loadAdminStatistics();
+            showModal('Uspjeh', `Otkazano: ${result.cancelled}, Neuspjelo: ${result.failed}` , 'success-modal');
+            setTimeout(() => closeModal(), 2500);
+            return;
           } else {
             console.log('Deleting admin appointment:', deleteId);
             await del(`/api/admin/appointments/${deleteId}`);
@@ -2499,6 +2524,20 @@
         showModal('Brisanje termina', 'Jeste li sigurni da želite obrisati ovaj termin?', 'error-modal', true, true);
       }
 
+      function showCancelAllConfirm() {
+        pendingDeleteId = null;
+        pendingDeleteType = 'user-all';
+        const msg = 'Jeste li sigurni da želite otkazati sve svoje buduće termine? Termini unutar 24 sata neće biti otkazani.';
+        showModal('Otkazivanje svih termina', msg, 'error-modal', true, true);
+      }
+
+      function showCancelAllAdminConfirm() {
+        pendingDeleteId = null;
+        pendingDeleteType = 'admin-all';
+        const msg = 'Jeste li sigurni da želite otkazati SVE buduće termine?';
+        showModal('Admin: Otkazivanje svih termina', msg, 'error-modal', true, true);
+      }
+
       async function showEditModal(id) {
         const appt = allUserAppointments.find(a => a.id === id);
         if (!appt) return;
@@ -2796,6 +2835,10 @@
         document.getElementById('userDateFilter').value = '';
         renderFilteredUserAppointments();
       });
+
+      document.getElementById('cancelAllUserApptsBtn')?.addEventListener('click', () => {
+        showCancelAllConfirm();
+      });
       
       // Admin filter event listeners
       document.getElementById('adminTrainerFilter')?.addEventListener('change', (e) => {
@@ -2814,6 +2857,10 @@
         document.getElementById('adminTrainerFilter').value = '';
         document.getElementById('adminDateFilter').value = '';
         renderFilteredAdminAppointments();
+      });
+
+      document.getElementById('cancelAllAdminApptsBtn')?.addEventListener('click', () => {
+        showCancelAllAdminConfirm();
       });
 
       document.getElementById('trainerWorkHoursSelect')?.addEventListener('change', async (e) => {

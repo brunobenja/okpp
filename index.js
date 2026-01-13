@@ -3,21 +3,39 @@ const { Pool } = require('pg');
 const bcrypt = require('bcryptjs'); // add this
 
 const useConnStr = !!process.env.DATABASE_URL;
-const pool = new Pool(
-  useConnStr
-    ? {
-        connectionString: process.env.DATABASE_URL,
-        ssl: process.env.PGSSL === 'require' ? { rejectUnauthorized: false } : false,
-      }
-    : {
-        host: process.env.PGHOST || 'localhost',
-        port: Number(process.env.PGPORT || 5432),
-        user: process.env.PGUSER || 'postgres',
-        password: process.env.PGPASSWORD || '',
-        database: process.env.PGDATABASE || 'postgres',
-        ssl: process.env.PGSSL === 'require' ? { rejectUnauthorized: false } : false,
-      }
-);
+// Safe diagnostic (does NOT print secrets)
+console.log('PG env types:', {
+  host: typeof process.env.PGHOST,
+  port: typeof process.env.PGPORT,
+  user: typeof process.env.PGUSER,
+  passwordType: typeof process.env.PGPASSWORD,
+  passwordLen: String(process.env.PGPASSWORD || '').length,
+  database: typeof process.env.PGDATABASE,
+  useConnStr: !!process.env.DATABASE_URL,
+});
+
+let pool;
+if (useConnStr && process.env.DATABASE_URL) {
+  pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.PGSSL === 'require' ? { rejectUnauthorized: false } : false,
+  });
+} else {
+  const host = process.env.PGHOST || 'localhost';
+  const port = String(process.env.PGPORT || 5432);
+  const user = process.env.PGUSER || 'postgres';
+  // Fallback: if PGPASSWORD is missing/empty, use a local default from .env
+  const password = (process.env.PGPASSWORD && process.env.PGPASSWORD.length)
+    ? String(process.env.PGPASSWORD)
+    : 'tinubra2004';
+  const database = process.env.PGDATABASE || 'postgres';
+  const connStr = `postgresql://${encodeURIComponent(user)}:${encodeURIComponent(password)}@${host}:${port}/${database}`;
+  console.log('PG connStr (masked):', `postgresql://${user}:***@${host}:${port}/${database}`);
+  pool = new Pool({
+    connectionString: connStr,
+    ssl: process.env.PGSSL === 'require' ? { rejectUnauthorized: false } : false,
+  });
+}
 
 // Simple helper to run parameterized queries safely
 async function query(text, params) {

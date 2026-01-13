@@ -281,6 +281,67 @@ app.get('/api/appointments/all', authRequired, async (req, res) => {
   }
 });
 
+// Admin: Cancel all future appointments (no 24h restriction)
+app.post('/api/admin/appointments/cancel-all', authRequired, async (req, res) => {
+  if (!isAdminUser(req.user)) return res.status(403).json({ error: 'Zabranjeno' });
+  try {
+    const { rows } = await db.query(
+      `SELECT id, scheduled_at FROM termini ORDER BY scheduled_at ASC`,
+      []
+    );
+    let cancelled = 0;
+    let failed = 0;
+    for (const appt of rows) {
+      try {
+        await db.cancelAppointment(appt.id, 'admin');
+        cancelled++;
+      } catch (e) {
+        failed++;
+      }
+    }
+    res.json({ cancelled, failed });
+  } catch (e) {
+    console.error('Admin bulk cancel error:', e);
+    res.status(500).json({ error: 'Pogreška poslužitelja' });
+  }
+});
+// Cancel all upcoming appointments for the current user (respect 24h policy)
+app.post('/api/appointments/cancel-all', authRequired, async (req, res) => {
+  try {
+    // Fetch all appointments for user
+    const { rows } = await db.query(
+      `SELECT id, scheduled_at FROM termini WHERE user_id = $1 ORDER BY scheduled_at ASC`,
+      [req.user.id]
+    );
+
+    const now = new Date();
+    let cancelled = 0;
+    let skipped = 0;
+
+    for (const appt of rows) {
+      const scheduledAt = new Date(appt.scheduled_at);
+      const hoursUntilAppt = (scheduledAt - now) / (1000 * 60 * 60);
+      // Respect 24-hour cancellation policy
+      if (hoursUntilAppt >= 24) {
+        try {
+          await db.cancelAppointment(appt.id, 'user');
+          cancelled++;
+        } catch (e) {
+          // If a single cancellation fails, count as skipped
+          skipped++;
+        }
+      } else {
+        skipped++;
+      }
+    }
+
+    res.json({ cancelled, skipped });
+  } catch (e) {
+    console.error('Bulk cancel error:', e);
+    res.status(500).json({ error: 'Pogreška poslužitelja' });
+  }
+});
+
 app.post('/api/appointments', authRequired, async (req, res) => {
   try {
     const { trainerId, scheduledAt, serviceId } = req.body || {};
