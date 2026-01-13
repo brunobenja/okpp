@@ -18,8 +18,10 @@ let pool;
 if (useConnStr && process.env.DATABASE_URL) {
   pool = new Pool({
     connectionString: process.env.DATABASE_URL,
-    ssl: process.env.PGSSL === 'require' ? { rejectUnauthorized: false } : false,
-  });
+    ssl: {
+      require: true,
+      rejectUnauthorized: false,
+    }});
 } else {
   const host = process.env.PGHOST || 'localhost';
   const port = String(process.env.PGPORT || 5432);
