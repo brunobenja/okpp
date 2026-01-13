@@ -193,7 +193,7 @@ async function seedTestData() {
     // Delete test users but keep admin
     await query(`DELETE FROM korisnici
 WHERE is_admin = false
-  AND name <> 'user';
+  AND email <> 'user@mail.com';
 `);
     
     // Create test users
