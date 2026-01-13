@@ -200,7 +200,7 @@ WHERE is_admin = false
     const users = [
       await createUser(
         "user",
-        "",
+        "user",
         "user@mail.com",
         await bcrypt.hash("user", 10),
         false
