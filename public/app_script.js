@@ -39,6 +39,7 @@ function padHour(n) {
 }
 
 function buildTimeSlots() {
+  console.log("Building time slots with workHours:", workHours);
   const open = Number(workHours.open_hour ?? 8);
   const close = Number(workHours.close_hour ?? 20);
   const slots = [];
@@ -46,6 +47,9 @@ function buildTimeSlots() {
     slots.push(`${padHour(h)}:00`);
   }
   allTimeSlots = slots;
+  console.log("Building time slots with workHours:", workHours);
+  console.log("Generated slots:", slots);
+
 }
 
 function updateWorkHoursDisplay() {
@@ -78,12 +82,12 @@ async function fetchTrainerWorkHours(trainerId, dateStr = "") {
   try {
     const query = dateStr ? `?date=${encodeURIComponent(dateStr)}` : "";
     const res = await get(`/api/trainer/${trainerId}/work-hours${query}`);
+    console.log("fetchTrainerWorkHours result:", res);
     return res;
   } catch (e) {
     console.warn("Ne mogu učitati radno vrijeme trenera", e);
     return null;
   }
-  console.log(await fetchTrainerWorkHours(selectedTrainer, ""));
 }
 
 async function applyTrainerHours(trainerId, dateStr = "") {
