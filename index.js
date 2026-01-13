@@ -198,10 +198,36 @@ WHERE is_admin = false
     
     // Create test users
     const users = [
-      await createUser('Ivan', 'Horvat', 'ivan.horvat@mail.com', await bcrypt.hash('lozinka123', 10), false),
-      await createUser('Ana', 'Kovač', 'ana.kovac@mail.com', await bcrypt.hash('lozinka456', 10), false),
-      await createUser('Marko', 'Novak', 'marko.novak@mail.com', await bcrypt.hash('lozinka789', 10), false),
+      await createUser(
+        "user",
+        "",
+        "user@mail.com",
+        await bcrypt.hash("user", 10),
+        false
+      ),
+      await createUser(
+        "Ivan",
+        "Horvat",
+        "ivan.horvat@mail.com",
+        await bcrypt.hash("lozinka123", 10),
+        false
+      ),
+      await createUser(
+        "Ana",
+        "Kovač",
+        "ana.kovac@mail.com",
+        await bcrypt.hash("lozinka456", 10),
+        false
+      ),
+      await createUser(
+        "Marko",
+        "Novak",
+        "marko.novak@mail.com",
+        await bcrypt.hash("lozinka789", 10),
+        false
+      ),
     ];
+
     
     // Create test trainers
     const trainerNames = [
