@@ -167,7 +167,7 @@ app.get('/api/admin/trainer/:id/work-hours', authRequired, async (req, res) => {
     if (!trainerId) return res.status(400).json({ error: 'Neispravan ID trenera' });
     const dateStr = req.query.date || null;
     const effective = await getEffectiveWorkHours(trainerId, dateStr);
-    const base = await db.getTrainerWorkHours(trainerId, dateStr);
+    const base = await db.getTrainerWorkHours(trainerId);
     const overrides = await db.listTrainerWorkHourOverrides(trainerId);
     res.json({ effective, base, overrides });
   } catch (e) {

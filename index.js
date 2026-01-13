@@ -274,7 +274,7 @@ async function cancelAppointment(id, canceledBy) {
   );
   return rows[0]; // vraća obrisani termin, ako treba
 }
-async function getTrainerWorkHours(trainerId, dateStr = null) {
+async function getTrainerWorkHours(trainerId) {
   if (!trainerId) return null;
 
   try {
