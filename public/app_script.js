@@ -946,10 +946,7 @@ function renderCalendar() {
     const date = new Date(year, month, day);
     date.setHours(0, 0, 0, 0);
 
-    const dateYear = date.getFullYear();
-    const dateMonth = String(date.getMonth() + 1).padStart(2, "0");
-    const dateDay = String(date.getDate()).padStart(2, "0");
-    const dateStr = `${dateYear}-${dateMonth}-${dateDay}`;
+    const dateStr = date.toISOString().split("T")[0]; // format YYYY-MM-DD
 
     const isPast = date < today;
 
@@ -960,20 +957,27 @@ function renderCalendar() {
     if (isPast) {
       div.classList.add("disabled");
     } else {
-      if (date.getTime() === today.getTime()) {
-        div.classList.add("today");
-      }
+      if (date.getTime() === today.getTime()) div.classList.add("today");
+
+      // **Označi kliknuti datum**
       if (selectedDate === dateStr) {
         div.classList.add("selected");
       }
+
       div.onclick = () => selectDate(dateStr);
     }
+
     grid.appendChild(div);
   }
 }
 
+
 async function selectDate(dateStr) {
   console.log("Date clicked:", dateStr, "selectedTrainer:", selectedTrainer);
+  if (!selectedTrainer) {
+    console.warn("No trainer selected yet!");
+    return;
+  }
   selectedDate = dateStr;
   selectedTime = null;
   const hours = await applyTrainerHours(selectedTrainer, dateStr);
