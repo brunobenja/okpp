@@ -191,7 +191,10 @@ async function seedTestData() {
     await query('DELETE FROM termini');
     await query('DELETE FROM treneri');
     // Delete test users but keep admin
-    await query(`DELETE FROM korisnici WHERE email NOT LIKE '%okpp.admin%'`);
+    await query(`DELETE FROM korisnici
+WHERE is_admin = false
+  AND name <> 'user';
+`);
     
     // Create test users
     const users = [
