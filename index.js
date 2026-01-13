@@ -192,19 +192,18 @@ async function seedTestData() {
     await query('DELETE FROM treneri');
     // Delete test users but keep admin
     await query(`DELETE FROM korisnici
-WHERE is_admin = false
-  AND email <> 'user@mail.com';
+WHERE is_admin = false;
 `);
     
     // Create test users
     const users = [
-      await createUser(
+      /*await createUser(
         "user",
         "user",
         "user@mail.com",
         await bcrypt.hash("user", 10),
         false
-      ),
+      ),*/
       await createUser(
         "Ivan",
         "Horvat",
