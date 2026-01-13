@@ -274,6 +274,65 @@ async function cancelAppointment(id, canceledBy) {
   );
   return rows[0]; // vraća obrisani termin, ako treba
 }
+async function getTrainerWorkHours(trainerId, dateStr = null) {
+  if (!trainerId) return null;
+
+  try {
+    let queryText;
+    let params;
+
+    if (dateStr) {
+      queryText = `
+        WITH override AS (
+          SELECT open_hour, close_hour
+          FROM trainer_work_hour_overrides
+          WHERE trainer_id = $1
+            AND $2::date BETWEEN start_date AND end_date
+          LIMIT 1
+        ),
+        trainer AS (
+          SELECT open_hour, close_hour
+          FROM trainer_work_hours
+          WHERE trainer_id = $1
+          LIMIT 1
+        ),
+        global AS (
+          SELECT open_hour, close_hour
+          FROM work_hours
+          LIMIT 1
+        )
+        SELECT
+          COALESCE(override.open_hour, trainer.open_hour, global.open_hour) AS open_hour,
+          COALESCE(override.close_hour, trainer.close_hour, global.close_hour) AS close_hour,
+          CASE 
+              WHEN override.open_hour IS NOT NULL THEN 'override'
+              WHEN trainer.open_hour IS NOT NULL THEN 'trainer'
+              ELSE 'global'
+          END AS source
+        FROM override
+        FULL OUTER JOIN trainer ON TRUE
+        FULL OUTER JOIN global ON TRUE
+        LIMIT 1;
+      `;
+      params = [trainerId, dateStr];
+    } else {
+      queryText = `
+        SELECT open_hour, close_hour, 'trainer' AS source
+        FROM trainer_work_hours
+        WHERE trainer_id = $1
+        LIMIT 1;
+      `;
+      params = [trainerId];
+    }
+
+    const res = await query(queryText, params);
+    return res.rows[0] || null;
+  } catch (e) {
+    console.error("Error fetching trainer work hours:", e);
+    return null;
+  }
+}
+
 
 
 module.exports = {
@@ -292,6 +351,7 @@ module.exports = {
   getAppointmentsForUser,
   getAllAppointments,
   cancelAppointment,
+  getTrainerWorkHours,
   updateAppointment,
 };
 
