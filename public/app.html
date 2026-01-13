@@ -1,0 +1,3012 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>GymTime - Rezervacija termina</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      
+      body { 
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #1a4d2e 0%, #2d5f3f 100%);
+        min-height: 100vh;
+        padding: 20px;
+      }
+      
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+      
+      .main-content {
+        display: grid;
+        grid-template-columns: 450px 1fr;
+        gap: 20px;
+        align-items: start;
+      }
+      
+      .main-content.history-active {
+        grid-template-columns: 1fr;
+      }
+      
+      .main-content.history-active #userApptPanel {
+        max-width: 100%;
+      }
+      
+      @media (max-width: 1024px) {
+        .main-content {
+          grid-template-columns: 1fr;
+        }
+        
+        .header {
+          flex-direction: column;
+          align-items: stretch;
+          gap: 12px;
+        }
+        
+        .logo-section {
+          justify-content: center;
+        }
+        
+        .tabs {
+          justify-content: center;
+          order: 2;
+        }
+        
+        #logoutBtn {
+          order: 3;
+          width: 100%;
+        }
+      }
+      
+      .header {
+        background: rgba(255, 255, 255, 0.98);
+        border-radius: 16px;
+        padding: 20px 32px;
+        margin-bottom: 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+        gap: 20px;
+      }
+      
+      .header-right {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      
+      .logo-section {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      
+      .logo-section h1 {
+        font-size: 32px;
+        font-weight: 800;
+        color: #1a4d2e;
+        margin: 0;
+      }
+      
+      #logoutBtn {
+        background: linear-gradient(135deg, #2d5f3f 0%, #1a4d2e 100%);
+        color: white;
+        border: none;
+        padding: 0 20px;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 8px rgba(45, 95, 63, 0.3);
+        height: 40px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        line-height: 1;
+      }
+      
+      #logoutBtn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(45, 95, 63, 0.4);
+      }
+      
+      .card { 
+        background: rgba(255, 255, 255, 0.98);
+        border: none;
+        border-radius: 16px;
+        padding: 24px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+      }
+      
+      .card h3 {
+        color: #1a4d2e;
+        font-size: 22px;
+        font-weight: 700;
+        margin-bottom: 16px;
+      }
+      
+      label { 
+        display: block;
+        margin-top: 12px;
+        font-weight: 600;
+        font-size: 14px;
+        color: #2d5f3f;
+        margin-bottom: 6px;
+      }
+      
+      select, input { 
+        width: 100%;
+        padding: 10px 14px;
+        margin-top: 4px;
+        box-sizing: border-box;
+        border: 2px solid #d0e3d9;
+        border-radius: 8px;
+        font-size: 14px;
+        background: #f9fcfb;
+        transition: all 0.3s ease;
+      }
+      
+      select:focus, input:focus {
+        outline: none;
+        border-color: #2d5f3f;
+        background: white;
+        box-shadow: 0 0 0 3px rgba(45, 95, 63, 0.1);
+      }
+      
+      button { 
+        margin-top: 12px;
+        padding: 10px 16px;
+        background: linear-gradient(135deg, #2d5f3f 0%, #1a4d2e 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 8px rgba(45, 95, 63, 0.3);
+      }
+      
+      button:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(45, 95, 63, 0.4);
+      }
+      
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+      }
+      
+      .row { display: flex; gap: 12px; }
+      .row > div { flex: 1; }
+      
+      .error { 
+        color: #c62828;
+        margin-top: 12px;
+        background: #ffebee;
+        padding: 12px;
+        border-radius: 8px;
+        font-size: 14px;
+        border-left: 4px solid #c62828;
+        display: none;
+      }
+
+      .hint-text {
+        margin-top: 8px;
+        color: #1f5133;
+        font-size: 14px;
+      }
+      
+      .error:not(:empty) {
+        display: block;
+      }
+      
+      .success { 
+        color: #1b5e20;
+        margin-top: 12px;
+        background: #e8f5e9;
+        padding: 12px;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 14px;
+        border-left: 4px solid #2e7d32;
+        display: none;
+      }
+      
+      .success:not(:empty) {
+        display: block;
+      }
+      table { 
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 12px;
+        background: white;
+        border-radius: 8px;
+        overflow: hidden;
+      }
+      
+      th {
+        background: linear-gradient(135deg, #2d5f3f 0%, #1a4d2e 100%);
+        color: white;
+        padding: 12px;
+        text-align: left;
+        font-weight: 700;
+        font-size: 14px;
+      }
+      
+      td { 
+        border-bottom: 1px solid #e0e0e0;
+        padding: 12px;
+        text-align: left;
+      }
+      
+      td:last-child {
+        text-align: center;
+      }
+      
+      tr:last-child td {
+        border-bottom: none;
+      }
+      
+      tr:hover {
+        background: #f5f5f5;
+      }
+      
+      .del-btn { 
+        background: #d32f2f;
+        color: #fff;
+        border: none;
+        padding: 6px 12px;
+        cursor: pointer;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+      }
+      
+      .del-btn:hover {
+        background: #b71c1c;
+        transform: scale(1.05);
+      }
+      
+      .confirm-btn { 
+        background: #2d5f3f;
+        color: #fff;
+        border: none;
+        padding: 6px 12px;
+        cursor: pointer;
+        border-radius: 6px;
+        font-size: 12px;
+        margin-right: 4px;
+        font-weight: 600;
+      }
+      
+      .cancel-btn { 
+        background: #999;
+        color: #fff;
+        border: none;
+        padding: 6px 12px;
+        cursor: pointer;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 600;
+      }
+      
+      .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+      }
+      
+      .modal {
+        background: white;
+        border-radius: 8px;
+        padding: 24px;
+        max-width: 400px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        text-align: center;
+      }
+      
+      .modal.success-modal {
+        border-top: 4px solid #2d5f3f;
+      }
+      
+      .modal.error-modal {
+        border-top: 4px solid #d32f2f;
+      }
+      
+      .modal h3 {
+        margin: 0 0 8px 0;
+      }
+      
+      .modal p {
+        margin: 0 0 16px 0;
+        color: #666;
+      }
+      
+      .modal-buttons {
+        display: flex;
+        gap: 8px;
+        justify-content: center;
+      }
+      
+      .modal-btn {
+        padding: 8px 16px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+      }
+      
+      .modal-btn.confirm {
+        background: #2d5f3f;
+        color: white;
+      }
+      
+      .modal-btn.cancel {
+        background: #d32f2f;
+        color: white;
+      }
+      
+      .modal-btn.close {
+        background: #2d5f3f;
+        color: white;
+      }
+      
+      .modal-btn:hover {
+        opacity: 0.9;
+      }
+      
+      .calendar-container { margin-top: 16px; }
+      .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; margin-top: 8px; }
+      .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+      .calendar-header button { padding: 4px 10px; margin: 0; font-size: 13px; }
+      .calendar-header span { font-size: 14px; font-weight: 500; }
+      .calendar-day { 
+        aspect-ratio: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid #d0e3d9;
+        border-radius: 4px;
+        cursor: pointer;
+        background: white;
+        transition: all 0.2s;
+        font-size: 12px;
+        min-height: 32px;
+        font-weight: 500;
+      }
+      .calendar-day:hover:not(.disabled):not(.day-label) { 
+        background: #e8f5e9;
+        border-color: #2d5f3f;
+      }
+      .calendar-day.selected { 
+        background: linear-gradient(135deg, #2d5f3f 0%, #1a4d2e 100%);
+        color: white;
+        font-weight: bold;
+        border-color: #1a4d2e;
+      }
+      .calendar-day.disabled { color: #ccc; cursor: not-allowed; background: #fafafa; }
+      .calendar-day.day-label { font-weight: 700; cursor: default; background: #e8f5e9; color: #1a4d2e; font-size: 11px; }
+      .calendar-day.today { border: 2px solid #2d5f3f; font-weight: 700; }
+      
+      .time-slots { margin-top: 16px; }
+      .time-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(65px, 1fr)); gap: 5px; margin-top: 8px; }
+      .time-btn {
+        padding: 8px;
+        border: 2px solid #d0e3d9;
+        border-radius: 6px;
+        background: white;
+        cursor: pointer;
+        transition: all 0.2s;
+        text-align: center;
+        font-size: 12px;
+        font-weight: 700;
+        color: #1a4d2e;
+      }
+      .time-btn:hover:not(:disabled) { 
+        background: #e8f5e9;
+        border-color: #2d5f3f;
+        transform: translateY(-2px);
+        color: #1a4d2e;
+      }
+      .time-btn.selected { 
+        background: linear-gradient(135deg, #2d5f3f 0%, #1a4d2e 100%);
+        color: white;
+        border-color: #1a4d2e;
+        font-weight: bold;
+      }
+      .time-btn:disabled { background: #f5f5f5; color: #999; cursor: not-allowed; border-color: #e0e0e0; }
+      
+      .book-final { margin-top: 16px; }
+      .book-final button { 
+        width: 100%; 
+        padding: 14px; 
+        background: linear-gradient(135deg, #2d5f3f 0%, #1a4d2e 100%);
+        color: white; 
+        border: none; 
+        border-radius: 8px; 
+        font-size: 16px;
+        cursor: pointer;
+        font-weight: 700;
+        box-shadow: 0 4px 12px rgba(45, 95, 63, 0.3);
+      }
+      .book-final button:disabled { 
+        background: #ccc;
+        cursor: not-allowed;
+        box-shadow: none;
+      }
+      .book-final button:hover:not(:disabled) { 
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(45, 95, 63, 0.4);
+      }
+      
+      .action-cell { display: flex; gap: 4px; align-items: center; justify-content: center; }
+      
+      .trainer-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 12px;
+        margin-top: 12px;
+      }
+      
+      .trainer-card {
+        border: 3px solid #d0e3d9;
+        border-radius: 12px;
+        padding: 12px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        background: white;
+      }
+      
+      .trainer-card:hover {
+        border-color: #2d5f3f;
+        background: #e8f5e9;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(45, 95, 63, 0.2);
+      }
+      
+      .trainer-card.selected {
+        border-color: #1a4d2e;
+        background: linear-gradient(135deg, #2d5f3f 0%, #1a4d2e 100%);
+        color: white;
+        transform: scale(1.02);
+      }
+      
+      .trainer-avatar {
+        width: 70px;
+        height: 70px;
+        border-radius: 50%;
+        margin: 0 auto 8px;
+        object-fit: cover;
+        border: 3px solid #d0e3d9;
+        background: #f0f0f0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 32px;
+      }
+      
+      .trainer-card.selected .trainer-avatar {
+        border-color: white;
+      }
+      
+      .trainer-name {
+        font-weight: 700;
+        font-size: 13px;
+        color: #1a4d2e;
+        margin: 0;
+      }
+      
+      .trainer-card.selected .trainer-name {
+        color: white;
+      }
+      
+      #trainerSelect {
+        display: none;
+      }
+      
+      .admin-filters {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 16px;
+        flex-wrap: wrap;
+      }
+      
+      .filter-group {
+        flex: 1;
+        min-width: 200px;
+      }
+      
+      .filter-group label {
+        display: block;
+        margin-bottom: 6px;
+        font-size: 13px;
+      }
+      
+      .filter-group select,
+      .filter-group input {
+        width: 100%;
+        padding: 8px 12px;
+        margin: 0;
+      }
+      
+      .clear-filters-btn {
+        padding: 10px 16px;
+        background: linear-gradient(135deg, #2d5f3f 0%, #1a4d2e 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 8px rgba(45, 95, 63, 0.3);
+        width: 100%;
+        margin-top: 0;
+      }
+      
+      .clear-filters-btn:hover {
+        background: linear-gradient(135deg, #234a2a 0%, #153d24 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(45, 95, 63, 0.4);
+      }
+      
+      .tabs {
+        display: flex;
+        gap: 8px;
+        margin: 0;
+        border: none;
+        align-items: center;
+      }
+      
+      .tab-btn {
+        padding: 0 20px;
+        background: #f0f7f3;
+        border: 2px solid #d0e3d9;
+        border-radius: 8px;
+        color: #666;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        margin: 0;
+        box-shadow: none;
+        height: 40px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        line-height: 1;
+      }
+      
+      .tab-btn:hover {
+        color: #2d5f3f;
+        background: #e8f5e9;
+        border-color: #2d5f3f;
+        transform: translateY(-2px);
+        box-shadow: 0 2px 8px rgba(45, 95, 63, 0.2);
+      }
+      
+      .tab-btn.active {
+        color: white;
+        background: linear-gradient(135deg, #2d5f3f 0%, #1a4d2e 100%);
+        border-color: #1a4d2e;
+        box-shadow: 0 2px 8px rgba(45, 95, 63, 0.3);
+      }
+      
+      .tab-content {
+        display: none;
+      }
+      
+      .tab-content.active {
+        display: block;
+      }
+      
+      .charts-container {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 32px;
+        margin-top: 32px;
+        margin-bottom: 32px;
+      }
+      
+      @media (max-width: 768px) {
+        .charts-container {
+          grid-template-columns: 1fr;
+        }
+        
+        .stats-summary {
+          grid-template-columns: 1fr;
+        }
+        
+        .stat-item:not(:last-child)::after {
+          width: 60%;
+          height: 1px;
+          left: 20%;
+          top: auto;
+          bottom: 0;
+          background: linear-gradient(to right, transparent, #d0e3d9, transparent);
+        }
+        
+        .stat-value {
+          font-size: 40px;
+        }
+      }
+      
+      .chart-wrapper {
+        background: white;
+        padding: 24px;
+        border-radius: 16px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
+        border: 1px solid rgba(45, 95, 63, 0.1);
+      }
+      
+      .chart-wrapper:hover {
+        box-shadow: 0 8px 24px rgba(45, 95, 63, 0.15);
+        transform: translateY(-4px);
+      }
+      
+      .chart-wrapper h4 {
+        color: #1a4d2e;
+        margin-bottom: 20px;
+        font-size: 18px;
+        text-align: center;
+        font-weight: 700;
+        padding-bottom: 12px;
+        border-bottom: 2px solid #e8f5e9;
+      }
+      
+      .chart-wrapper canvas {
+        max-height: 300px;
+      }
+      
+      .stats-summary {
+        background: white;
+        padding: 0;
+        border-radius: 16px;
+        margin-bottom: 32px;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+      }
+      
+      .stat-item {
+        text-align: center;
+        padding: 40px 24px;
+        position: relative;
+        background: linear-gradient(135deg, #f8fdf9 0%, #ffffff 100%);
+        transition: all 0.3s ease;
+      }
+      
+      .stat-item:not(:last-child)::after {
+        content: '';
+        position: absolute;
+        right: 0;
+        top: 20%;
+        height: 60%;
+        width: 1px;
+        background: linear-gradient(to bottom, transparent, #d0e3d9, transparent);
+      }
+      
+      .stat-item:hover {
+        background: linear-gradient(135deg, #e8f5e9 0%, #f0f7f3 100%);
+        transform: translateY(-2px);
+      }
+      
+      .stat-value {
+        font-size: 28px;
+        font-weight: 800;
+        background: linear-gradient(135deg, #2d5f3f 0%, #1a4d2e 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        display: block;
+        margin-bottom: 12px;
+        line-height: 1.2;
+      }
+      
+      .stat-label {
+        font-size: 15px;
+        color: #555;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1.2px;
+      }
+      
+      .history-section {
+        background: white;
+        padding: 24px;
+        border-radius: 16px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+        margin-top: 24px;
+      }
+      
+      .history-section h4 {
+        color: #1a4d2e;
+        margin-bottom: 16px;
+        font-size: 18px;
+        font-weight: 700;
+        padding-bottom: 12px;
+        border-bottom: 2px solid #e8f5e9;
+      }
+      
+      #historyView table {
+        border-radius: 12px;
+        overflow: hidden;
+      }
+      
+      #historyView th {
+        background: linear-gradient(135deg, #2d5f3f 0%, #1a4d2e 100%);
+        padding: 14px;
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      
+      #historyView td {
+        padding: 14px;
+        font-size: 14px;
+      }
+      
+      #historyView tr:hover {
+        background: linear-gradient(135deg, #f8fdf9 0%, #f0f7f3 100%);
+      }
+      
+      @keyframes fadeInUp {
+        from {
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      
+      #historyView {
+        animation: fadeInUp 0.5s ease-out;
+      }
+      
+      .stat-item {
+        animation: fadeInUp 0.5s ease-out;
+      }
+      
+      .stat-item:nth-child(1) {
+        animation-delay: 0.1s;
+      }
+      
+      .stat-item:nth-child(2) {
+        animation-delay: 0.2s;
+      }
+      
+      .stat-item:nth-child(3) {
+        animation-delay: 0.3s;
+      }
+      
+      .chart-wrapper {
+        animation: fadeInUp 0.6s ease-out;
+      }
+      
+      .chart-wrapper:nth-child(1) {
+        animation-delay: 0.4s;
+      }
+      
+      .chart-wrapper:nth-child(2) {
+        animation-delay: 0.5s;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <div class="logo-section">
+          <h1>GymTime</h1>
+        </div>
+        <div class="header-right">
+          <div class="tabs" id="userTabs" style="display: none;">
+            <button class="tab-btn" id="historyToggle" onclick="toggleHistory()">Povijest</button>
+          </div>
+          <button id="logoutBtn">Odjava</button>
+        </div>
+      </div>
+
+    <div class="main-content" id="mainContent">
+      <div class="card" id="bookingPanel">
+      <h3 id="bookingTitle">Novi termin</h3>
+      
+      <div class="admin-filters" style="margin-bottom: 16px;">
+        <div class="filter-group">
+          <label>Filtriraj po usluzi</label>
+          <select id="filterService">
+            <option value="">Sve usluge</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Filtriraj po tipu trenera</label>
+          <select id="filterTrainerType">
+            <option value="">Svi tipovi</option>
+          </select>
+        </div>
+      </div>
+      
+      <label>Odaberite trenera</label>
+      <div class="trainer-grid" id="trainerGrid"></div>
+      <select id="trainerSelect" style="display: none;">
+        <option value="">-- Odaberite trenera --</option>
+      </select>
+      
+      <div class="calendar-container" id="calendarContainer" style="display:none;">
+        <label>Odaberite datum</label>
+        <div class="calendar-header">
+          <button id="prevMonth">&lt; Prethodni</button>
+          <span id="monthYear"></span>
+          <button id="nextMonth">Sljedeći &gt;</button>
+        </div>
+        <div class="calendar-grid" id="calendarGrid"></div>
+      </div>
+      
+      <div id="servicePanel" style="display:none; margin-top: 16px;">
+        <label>Odaberite uslugu</label>
+        <select id="serviceSelect"></select>
+      </div>
+      
+      <div class="time-slots" id="timeSlots" style="display:none;">
+        <label>Odaberite vrijeme</label>
+        <div class="hint-text" id="workHoursDisplay">Radno vrijeme: 08:00 - 20:00</div>
+        <div class="time-grid" id="timeGrid"></div>
+      </div>
+      
+      <div class="book-final" id="bookFinal" style="display:none;">
+        <button id="bookBtn" disabled>Rezerviraj termin</button>
+        <div class="error" id="bookErr"></div>
+        <div class="success" id="bookSuccess"></div>
+      </div>
+      </div>
+
+      <div class="card" id="userApptPanel">
+      <h3 id="userApptTitle">Moji termini</h3>
+      
+      <div id="currentView">
+      <div class="admin-filters">
+        <div class="filter-group">
+          <label>Filtriraj po usluzi</label>
+          <select id="userServiceFilter">
+            <option value="">Sve usluge</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Filtriraj po datumu</label>
+          <input type="date" id="userDateFilter" />
+        </div>
+        <div class="filter-group">
+          <label>&nbsp;</label>
+          <button class="clear-filters-btn" id="clearUserFiltersBtn">Očisti filtre</button>
+        </div>
+      </div>
+      <div id="apptList">Učitavanje…</div>
+      </div>
+      
+      <div id="historyView" style="display: none;">
+        <div class="stats-summary">
+          <div class="stat-item">
+            <span class="stat-value" id="totalPastAppts">0</span>
+            <span class="stat-label">Ukupno termina</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value" id="favService">-</span>
+            <span class="stat-label">Najčešća usluga</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value" id="favTrainer">-</span>
+            <span class="stat-label">Najčešći trener</span>
+          </div>
+        </div>
+        
+        <div class="charts-container">
+          <div class="chart-wrapper">
+            <h4>Usluge po učestalosti</h4>
+            <canvas id="serviceChart"></canvas>
+          </div>
+          <div class="chart-wrapper">
+            <h4>Treneri po učestalosti</h4>
+            <canvas id="trainerChart"></canvas>
+          </div>
+        </div>
+        
+        <div class="history-section">
+          <h4>Prošli termini</h4>
+          <div id="pastApptList">Učitavanje…</div>
+        </div>
+      </div>
+      </div>
+    </div>
+
+    <div class="card" id="workHoursCard" hidden>
+      <h3>Admin: Radno vrijeme</h3>
+      <div class="row">
+        <div>
+          <label>Početak (sat)</label>
+          <input type="time" id="workOpen" min="00:00" max="23:00" step="3600" />
+        </div>
+        <div>
+          <label>Kraj (sat)</label>
+          <input type="time" id="workClose" min="00:00" max="23:00" step="3600" />
+        </div>
+      </div>
+      <div class="hint-text" id="currentWorkHoursAdmin">Trenutno: 08:00 - 20:00</div>
+      <button id="saveWorkHoursBtn">Spremi radno vrijeme</button>
+      <div class="hint-text" id="workHoursStatus"></div>
+    </div>
+
+    <div class="card" id="trainerWorkHoursCard" hidden>
+      <h3>Admin: Radno vrijeme po treneru</h3>
+      <div class="row">
+        <div>
+          <label>Trener</label>
+          <select id="trainerWorkHoursSelect">
+            <option value="">Odaberite trenera...</option>
+          </select>
+        </div>
+        <div>
+          <label>Datum</label>
+          <input type="date" id="trainerWorkStartDate" />
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label>Početak (sat)</label>
+          <input type="time" id="trainerWorkOpen" />
+        </div>
+        <div>
+          <label>Kraj (sat)</label>
+          <input type="time" id="trainerWorkClose" />
+        </div>
+      </div>
+      <div class="hint-text" id="trainerWorkHoursStatus">Odaberite trenera za prikaz radnog vremena.</div>
+      <div id="trainerWorkHoursList" style="margin:12px 0; color:#1a4d2e;"></div>
+      <button id="saveTrainerWorkHoursBtn">Spremi radno vrijeme trenera</button>
+    </div>
+
+    <div class="card" id="adminPanel" hidden>
+      <h3>Admin: Svi termini</h3>
+      <div class="admin-filters">
+        <div class="filter-group">
+          <label>Filtriraj po treneru</label>
+          <select id="adminTrainerFilter">
+            <option value="">Svi treneri</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Filtriraj po datumu</label>
+          <input type="date" id="adminDateFilter" />
+        </div>
+        <div class="filter-group">
+          <label>&nbsp;</label>
+          <button class="clear-filters-btn" id="clearFiltersBtn">Očisti filtre</button>
+        </div>
+      </div>
+      <div id="adminApptList">Učitavanje…</div>
+    </div>
+
+    <div class="card" id="adminReservePanel" hidden>
+      <h3>Admin: Dodaj termin za korisnika</h3>
+      <div class="row">
+        <div>
+          <label>Korisnik</label>
+          <select id="adminClientSelect" style="width: 100%;">
+            <option value="">Odaberite korisnika...</option>
+          </select>
+        </div>
+        <div>
+          <label>Trener</label>
+          <select id="adminReserveTrainerSelect" style="width: 100%;">
+            <option value="">Odaberite trenera...</option>
+          </select>
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label>Usluga</label>
+          <select id="adminReserveServiceSelect" style="width: 100%;">
+            <option value="">Odaberite uslugu...</option>
+          </select>
+        </div>
+        <div>
+          <label>Datum</label>
+          <input type="date" id="adminReserveDate" />
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label>Vrijeme</label>
+          <select id="adminReserveTimeSelect">
+            <option value="">Odaberite vrijeme...</option>
+          </select>
+        </div>
+      </div>
+      <button id="adminReserveBtn" class="confirm-btn">Dodaj termin</button>
+      <div class="hint-text" id="adminReserveStatus"></div>
+    </div>
+
+    <div class="card" id="statsPanel" hidden>
+      <h3>Admin: Statistika</h3>
+      
+      <div class="stats-summary">
+        <div class="stat-item">
+          <span class="stat-value" id="totalApptsAdmin">0</span>
+          <span class="stat-label">Ukupno termina</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-value" id="totalCancellations">0</span>
+          <span class="stat-label">Ukupno otkazanih</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-value" id="recentCancellations">0</span>
+          <span class="stat-label">Otkazano (30 dana)</span>
+        </div>
+      </div>
+
+      <div class="charts-container">
+        <div class="chart-wrapper">
+          <h4>Termini po usluzi</h4>
+          <canvas id="adminServiceChart"></canvas>
+        </div>
+        <div class="chart-wrapper">
+          <h4>Termini po treneru</h4>
+          <canvas id="adminTrainerChart"></canvas>
+        </div>
+      </div>
+
+      <div class="charts-container">
+        <div class="chart-wrapper">
+          <h4>Zauzetost po satu (peak hours)</h4>
+          <canvas id="peakHoursChart"></canvas>
+        </div>
+        <div class="chart-wrapper">
+          <h4>Otkazivanja</h4>
+          <canvas id="cancellationsChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      let isAdmin = false;
+      let allAppointments = [];
+      let allUserAppointments = [];
+      let allAdminAppointments = [];
+      let selectedTrainer = null;
+      let selectedServiceId = null;
+      let selectedDate = null;
+      let selectedTime = null;
+      let currentMonth = new Date();
+      let pendingDeleteId = null;
+      let pendingDeleteType = null;
+      let pendingEditId = null;
+      let adminFilterTrainer = '';
+      let adminFilterDate = '';
+      let userFilterDate = '';
+      let userFilterService = '';
+      let cachedTrainers = [];
+      let services = [];
+      let filterServiceId = null;
+      let filterTrainerType = null;
+      let filterDateVal = '';
+      let filterTimeVal = '';
+      let allTrainers = [];
+      let serviceChart = null;
+      let trainerChart = null;
+      let defaultWorkHours = { open_hour: 8, close_hour: 20 };
+      let workHours = { open_hour: 8, close_hour: 20 };
+      let workHoursSource = 'global';
+      let adminReserveHours = { open_hour: 8, close_hour: 20 };
+      let allTimeSlots = [];
+      const dayLabels = ['Ned', 'Pon', 'Uto', 'Sri', 'Čet', 'Pet', 'Sub'];
+      let historyMode = false;
+      let adminServiceChart = null;
+      let adminTrainerChart = null;
+      let peakHoursChart = null;
+      let cancellationsChart = null;
+
+      function padHour(n) {
+        return String(n).padStart(2, '0');
+      }
+
+      function buildTimeSlots() {
+        const open = Number(workHours.open_hour ?? 8);
+        const close = Number(workHours.close_hour ?? 20);
+        const slots = [];
+        for (let h = open; h <= close; h++) {
+          slots.push(`${padHour(h)}:00`);
+        }
+        allTimeSlots = slots;
+      }
+
+      function updateWorkHoursDisplay() {
+        const userDisplay = document.getElementById('workHoursDisplay');
+        if (userDisplay) {
+          const label = workHoursSource === 'override'
+            ? 'Radno vrijeme trenera (raspon)'
+            : (workHoursSource === 'trainer' ? 'Radno vrijeme trenera' : 'Radno vrijeme');
+          userDisplay.textContent = `${label}: ${padHour(workHours.open_hour)}:00 - ${padHour(workHours.close_hour)}:00`;
+        }
+        const adminDisplay = document.getElementById('currentWorkHoursAdmin');
+        if (adminDisplay) {
+          adminDisplay.textContent = `Trenutno: ${padHour(workHours.open_hour)}:00 - ${padHour(workHours.close_hour)}:00`;
+        }
+        const openInput = document.getElementById('workOpen');
+        const closeInput = document.getElementById('workClose');
+        if (openInput) openInput.value = `${padHour(workHours.open_hour)}:00`;
+        if (closeInput) closeInput.value = `${padHour(workHours.close_hour)}:00`;
+      }
+
+      async function fetchTrainerWorkHours(trainerId, dateStr = '') {
+        if (!trainerId) return null;
+        try {
+          const query = dateStr ? `?date=${encodeURIComponent(dateStr)}` : '';
+          const res = await get(`/api/trainer/${trainerId}/work-hours${query}`);
+          return res;
+        } catch (e) {
+          console.warn('Ne mogu učitati radno vrijeme trenera', e);
+          return null;
+        }
+      }
+
+      async function applyTrainerHours(trainerId, dateStr = '') {
+        const hours = trainerId ? await fetchTrainerWorkHours(trainerId, dateStr) : null;
+        if (hours && hours.open_hour !== undefined && hours.close_hour !== undefined) {
+          workHours = { open_hour: Number(hours.open_hour), close_hour: Number(hours.close_hour) };
+          workHoursSource = hours.source || 'trainer';
+        } else {
+          workHours = { ...defaultWorkHours };
+          workHoursSource = 'global';
+        }
+        buildTimeSlots();
+        updateWorkHoursDisplay();
+        if (selectedDate) updateTimeSlots();
+      }
+
+      async function getEffectiveTrainerHours(trainerId, dateStr = '') {
+        const hours = trainerId ? await fetchTrainerWorkHours(trainerId, dateStr) : null;
+        if (hours && hours.open_hour !== undefined && hours.close_hour !== undefined) {
+          return { open_hour: Number(hours.open_hour), close_hour: Number(hours.close_hour) };
+        }
+        return { ...defaultWorkHours };
+      }
+
+      async function loadWorkHours() {
+        try {
+          const hours = await get('/api/work-hours');
+          defaultWorkHours = {
+            open_hour: Number(hours.open_hour ?? 8),
+            close_hour: Number(hours.close_hour ?? 20),
+          };
+          workHours = { ...defaultWorkHours };
+          workHoursSource = 'global';
+        } catch (e) {
+          console.warn('Unable to load work hours, using defaults', e);
+          defaultWorkHours = { open_hour: 8, close_hour: 20 };
+          workHours = { ...defaultWorkHours };
+          workHoursSource = 'global';
+        }
+        buildTimeSlots();
+        updateWorkHoursDisplay();
+      }
+      
+      function toggleHistory() {
+        historyMode = !historyMode;
+        const currentView = document.getElementById('currentView');
+        const historyView = document.getElementById('historyView');
+        const bookingPanel = document.getElementById('bookingPanel');
+        const historyBtn = document.getElementById('historyToggle');
+        const userApptTitle = document.getElementById('userApptTitle');
+        const bookingTitle = document.getElementById('bookingTitle');
+        const mainContent = document.getElementById('mainContent');
+        
+        if (historyMode) {
+          // Show history
+          currentView.style.display = 'none';
+          historyView.style.display = 'block';
+          bookingPanel.style.display = 'none';
+          historyBtn.classList.add('active');
+          userApptTitle.textContent = 'Povijest termina';
+          mainContent.classList.add('history-active');
+          renderHistoryTab();
+        } else {
+          // Show current appointments and booking
+          currentView.style.display = 'block';
+          historyView.style.display = 'none';
+          bookingPanel.style.display = 'block';
+          historyBtn.classList.remove('active');
+          userApptTitle.textContent = 'Moji termini';
+          mainContent.classList.remove('history-active');
+        }
+      }
+      
+      function renderHistoryTab() {
+        const now = new Date();
+        const pastAppointments = allUserAppointments.filter(a => {
+          return new Date(a.scheduled_at) < now;
+        });
+        
+        // Update stats
+        document.getElementById('totalPastAppts').textContent = pastAppointments.length;
+        
+        // Calculate service statistics
+        const serviceStats = {};
+        pastAppointments.forEach(a => {
+          const service = a.service_name || 'Nepoznato';
+          serviceStats[service] = (serviceStats[service] || 0) + 1;
+        });
+        
+        // Calculate trainer statistics
+        const trainerStats = {};
+        pastAppointments.forEach(a => {
+          const trainer = `${a.trainer_name} ${a.trainer_surname}`;
+          trainerStats[trainer] = (trainerStats[trainer] || 0) + 1;
+        });
+        
+        // Find favorites
+        let favService = '-';
+        let maxServiceCount = 0;
+        Object.entries(serviceStats).forEach(([service, count]) => {
+          if (count > maxServiceCount) {
+            maxServiceCount = count;
+            favService = service;
+          }
+        });
+        
+        let favTrainerName = '-';
+        let maxTrainerCount = 0;
+        Object.entries(trainerStats).forEach(([trainer, count]) => {
+          if (count > maxTrainerCount) {
+            maxTrainerCount = count;
+            favTrainerName = trainer;
+          }
+        });
+        
+        document.getElementById('favService').textContent = favService;
+        document.getElementById('favTrainer').textContent = favTrainerName;
+        
+        // Render charts
+        renderServiceChart(serviceStats);
+        renderTrainerChart(trainerStats);
+        
+        // Render past appointments list
+        renderPastAppointmentsList(pastAppointments);
+      }
+      
+      function renderServiceChart(serviceStats) {
+        const ctx = document.getElementById('serviceChart');
+        if (!ctx) return;
+        
+        if (serviceChart) {
+          serviceChart.destroy();
+        }
+        
+        const labels = Object.keys(serviceStats);
+        const data = Object.values(serviceStats);
+        
+        if (labels.length === 0) {
+          ctx.getContext('2d').clearRect(0, 0, ctx.width, ctx.height);
+          return;
+        }
+        
+        serviceChart = new Chart(ctx, {
+          type: 'pie',
+          data: {
+            labels: labels,
+            datasets: [{
+              data: data,
+              backgroundColor: [
+                '#FF6384',
+                '#36A2EB',
+                '#FFCE56',
+                '#4BC0C0',
+                '#9966FF',
+                '#FF9F40'
+              ],
+              borderWidth: 2,
+              borderColor: '#fff'
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+              legend: {
+                position: 'bottom',
+                labels: {
+                  padding: 12,
+                  font: {
+                    size: 12
+                  }
+                }
+              },
+              tooltip: {
+                callbacks: {
+                  label: function(context) {
+                    const label = context.label || '';
+                    const value = context.parsed || 0;
+                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                    const percentage = ((value / total) * 100).toFixed(1);
+                    return `${label}: ${value} (${percentage}%)`;
+                  }
+                }
+              }
+            }
+          }
+        });
+      }
+      
+      function renderTrainerChart(trainerStats) {
+        const ctx = document.getElementById('trainerChart');
+        if (!ctx) return;
+        
+        if (trainerChart) {
+          trainerChart.destroy();
+        }
+        
+        const labels = Object.keys(trainerStats);
+        const data = Object.values(trainerStats);
+        
+        if (labels.length === 0) {
+          ctx.getContext('2d').clearRect(0, 0, ctx.width, ctx.height);
+          return;
+        }
+        
+        trainerChart = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: labels,
+            datasets: [{
+              label: 'Broj termina',
+              data: data,
+              backgroundColor: '#36A2EB',
+              borderColor: '#2980B9',
+              borderWidth: 1
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            scales: {
+              y: {
+                beginAtZero: true,
+                ticks: {
+                  stepSize: 1
+                }
+              },
+              x: {
+                ticks: {
+                  font: {
+                    size: 11
+                  },
+                  maxRotation: 45,
+                  minRotation: 45
+                }
+              }
+            },
+            plugins: {
+              legend: {
+                display: false
+              },
+              tooltip: {
+                callbacks: {
+                  label: function(context) {
+                    return `Termina: ${context.parsed.y}`;
+                  }
+                }
+              }
+            }
+          }
+        });
+      }
+      
+      function renderPastAppointmentsList(pastAppointments) {
+        const wrap = document.getElementById('pastApptList');
+        
+        if (!pastAppointments || pastAppointments.length === 0) {
+          wrap.textContent = 'Još nema prošlih termina.';
+          return;
+        }
+        
+        // Sort by date (newest first)
+        pastAppointments.sort((a, b) => {
+          return new Date(b.scheduled_at) - new Date(a.scheduled_at);
+        });
+        
+        const rows = pastAppointments.map(a => `
+          <tr>
+            <td>${fmt(a.scheduled_at)}</td>
+            <td>${a.service_name || 'N/A'}</td>
+            <td>${a.trainer_name} ${a.trainer_surname}</td>
+          </tr>
+        `).join('');
+        
+        wrap.innerHTML = `<table><thead><tr><th>Vrijeme</th><th>Usluga</th><th>Trener</th></tr></thead><tbody>${rows}</tbody></table>`;
+      }
+
+      async function loadAdminStatistics() {
+        if (!isAdmin) return;
+        try {
+          const stats = await get('/api/admin/statistics');
+          
+          // Update summary stats
+          document.getElementById('totalApptsAdmin').textContent = stats.totalAppointments;
+          document.getElementById('totalCancellations').textContent = stats.totalCancellations;
+          document.getElementById('recentCancellations').textContent = stats.recentCancellations;
+          
+          // Render charts
+          renderAdminServiceChart(stats.serviceBreakdown);
+          renderAdminTrainerChart(stats.trainerBreakdown);
+          renderPeakHoursChart(stats.peakHours);
+          renderCancellationsChart(stats.cancellationsByType);
+        } catch (e) {
+          console.error('Error loading admin statistics:', e);
+        }
+      }
+
+      function renderAdminServiceChart(data) {
+        const ctx = document.getElementById('adminServiceChart');
+        if (!ctx) return;
+        
+        if (adminServiceChart) {
+          adminServiceChart.destroy();
+        }
+        
+        if (!data || data.length === 0) {
+          ctx.getContext('2d').clearRect(0, 0, ctx.width, ctx.height);
+          return;
+        }
+        
+        const labels = data.map(d => d.name || 'Nepoznato');
+        const values = data.map(d => d.count);
+        
+        adminServiceChart = new Chart(ctx, {
+          type: 'pie',
+          data: {
+            labels: labels,
+            datasets: [{
+              data: values,
+              backgroundColor: [
+                '#FF6384',
+                '#36A2EB',
+                '#FFCE56',
+                '#4BC0C0',
+                '#9966FF',
+                '#FF9F40'
+              ],
+              borderWidth: 2,
+              borderColor: '#fff'
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+              legend: {
+                position: 'bottom',
+                labels: {
+                  padding: 12,
+                  font: {
+                    size: 12
+                  }
+                }
+              }
+            }
+          }
+        });
+      }
+
+      function renderAdminTrainerChart(data) {
+        const ctx = document.getElementById('adminTrainerChart');
+        if (!ctx) return;
+        
+        if (adminTrainerChart) {
+          adminTrainerChart.destroy();
+        }
+        
+        if (!data || data.length === 0) {
+          ctx.getContext('2d').clearRect(0, 0, ctx.width, ctx.height);
+          return;
+        }
+        
+        const labels = data.map(d => d.name);
+        const values = data.map(d => d.count);
+        
+        adminTrainerChart = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: labels,
+            datasets: [{
+              label: 'Broj termina',
+              data: values,
+              backgroundColor: '#36A2EB',
+              borderColor: '#2980B9',
+              borderWidth: 1
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            scales: {
+              y: {
+                beginAtZero: true,
+                ticks: {
+                  stepSize: 1
+                }
+              },
+              x: {
+                ticks: {
+                  font: {
+                    size: 10
+                  },
+                  maxRotation: 45,
+                  minRotation: 45
+                }
+              }
+            },
+            plugins: {
+              legend: {
+                display: false
+              }
+            }
+          }
+        });
+      }
+
+      function renderPeakHoursChart(data) {
+        const ctx = document.getElementById('peakHoursChart');
+        if (!ctx) return;
+        
+        if (peakHoursChart) {
+          peakHoursChart.destroy();
+        }
+        
+        if (!data || data.length === 0) {
+          ctx.getContext('2d').clearRect(0, 0, ctx.width, ctx.height);
+          return;
+        }
+        
+        const labels = data.map(d => `${String(d.hour).padStart(2, '0')}:00`);
+        const values = data.map(d => d.count);
+        
+        peakHoursChart = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: labels,
+            datasets: [{
+              label: 'Broj termina',
+              data: values,
+              backgroundColor: 'rgba(75, 192, 192, 0.2)',
+              borderColor: '#4BC0C0',
+              borderWidth: 2,
+              tension: 0.3,
+              fill: true
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            scales: {
+              y: {
+                beginAtZero: true,
+                ticks: {
+                  stepSize: 1
+                }
+              }
+            },
+            plugins: {
+              legend: {
+                display: false
+              }
+            }
+          }
+        });
+      }
+
+      function renderCancellationsChart(data) {
+        const ctx = document.getElementById('cancellationsChart');
+        if (!ctx) return;
+        
+        if (cancellationsChart) {
+          cancellationsChart.destroy();
+        }
+        
+        if (!data || data.length === 0) {
+          ctx.getContext('2d').clearRect(0, 0, ctx.width, ctx.height);
+          return;
+        }
+        
+        const labels = data.map(d => d.type === 'user' ? 'Korisnik' : 'Admin');
+        const values = data.map(d => d.count);
+        
+        cancellationsChart = new Chart(ctx, {
+          type: 'doughnut',
+          data: {
+            labels: labels,
+            datasets: [{
+              data: values,
+              backgroundColor: ['#FF6384', '#36A2EB'],
+              borderWidth: 2,
+              borderColor: '#fff'
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+              legend: {
+                position: 'bottom',
+                labels: {
+                  padding: 12,
+                  font: {
+                    size: 12
+                  }
+                }
+              }
+            }
+          }
+        });
+      }
+
+      async function get(path) {
+        const res = await fetch(path);
+        if (res.status === 401) { location.href = '/'; return; }
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'Request failed');
+        return data;
+      }
+      async function post(path, body) {
+        const res = await fetch(path, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        if (res.status === 401) { location.href = '/'; return; }
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'Request failed');
+        return data;
+      }
+      async function del(path) {
+        const res = await fetch(path, { method: 'DELETE' });
+        if (res.status === 401) { location.href = '/'; return; }
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'Request failed');
+        return data;
+      }
+
+      async function put(path, body) {
+        const res = await fetch(path, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        if (res.status === 401) { location.href = '/'; return; }
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'Request failed');
+        return data;
+      }
+
+      function showModal(title, message, type, onConfirm = null, showCancel = false) {
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+        
+        const modal = document.createElement('div');
+        modal.className = `modal ${type}-modal`;
+        
+        modal.innerHTML = `
+          <h3>${title}</h3>
+          <p>${message}</p>
+          <div class="modal-buttons">
+            ${showCancel ? `<button class="modal-btn confirm" onclick="confirmDeleteFromModal()">Da</button>` : ''}
+            <button class="modal-btn ${showCancel ? 'cancel' : 'close'}" onclick="closeModal()">
+              ${showCancel ? 'Ne' : 'U redu'}
+            </button>
+          </div>
+        `;
+        
+        overlay.appendChild(modal);
+        document.body.appendChild(overlay);
+      }
+
+      function closeModal() {
+        const overlay = document.querySelector('.modal-overlay');
+        overlay?.remove();
+        pendingDeleteId = null;
+        pendingDeleteType = null;
+      }
+
+      async function confirmDeleteFromModal() {
+        // Save the values BEFORE closing modal
+        const deleteId = pendingDeleteId;
+        const deleteType = pendingDeleteType;
+        
+        console.log('confirmDeleteFromModal - ID:', deleteId, 'Type:', deleteType);
+        closeModal();
+        
+        try {
+          if (deleteType === 'user') {
+            console.log('Deleting user appointment:', deleteId);
+            await del(`/api/appointments/${deleteId}`);
+            await loadAllAppointmentsForFiltering();
+            await loadAppointments();
+            updateTimeSlots();
+          } else {
+            console.log('Deleting admin appointment:', deleteId);
+            await del(`/api/admin/appointments/${deleteId}`);
+            await loadAdminAppointments();
+            await loadAdminStatistics();
+          }
+          
+            showModal('Uspjeh', 'Termin je uspješno obrisan!', 'success-modal');
+          setTimeout(() => closeModal(), 2000);
+        } catch (e) {
+            showModal('Pogreška', e.message, 'error-modal');
+        }
+      }
+
+      async function loadAllAppointmentsForFiltering() {
+        allAppointments = await get('/api/appointments/all');
+      }
+
+      async function loadTrainers() {
+        try {
+          let url = '/api/trainers';
+          const params = [];
+          // Note: Service filtering is disabled since all trainers offer all services
+          // if (filterServiceId) {
+          //   params.push(`serviceId=${filterServiceId}`);
+          // }
+          if (filterTrainerType) {
+            params.push(`type=${encodeURIComponent(filterTrainerType)}`);
+          }
+          if (params.length > 0) {
+            url += '?' + params.join('&');
+          }
+          allTrainers = await get(url);
+          renderFilteredTrainers();
+        } catch (e) {
+          console.error('Error loading trainers:', e);
+        }
+      }
+      
+      function renderFilteredTrainers() {
+        const grid = document.getElementById('trainerGrid');
+        grid.innerHTML = '';
+        
+        let trainers = [...allTrainers];
+        
+        if (trainers.length === 0) {
+          grid.innerHTML = '<p style="color: #666; padding: 12px;">Nema dostupnih trenera za odabrane filtere.</p>';
+          return;
+        }
+        
+        trainers.forEach(t => {
+          const card = document.createElement('div');
+          card.className = 'trainer-card';
+          card.onclick = () => selectTrainer(t.id, card);
+          
+          const avatar = document.createElement('div');
+          avatar.className = 'trainer-avatar';
+          
+          if (t.profile_pic) {
+            const img = document.createElement('img');
+            img.src = t.profile_pic;
+            img.alt = `${t.name} ${t.surname}`;
+            img.style.width = '100%';
+            img.style.height = '100%';
+            img.style.borderRadius = '50%';
+            img.style.objectFit = 'cover';
+            avatar.appendChild(img);
+          } else {
+            const initials = `${(t.name || '').charAt(0)}${(t.surname || '').charAt(0)}`.toUpperCase();
+            avatar.textContent = initials || 'TR';
+          }
+          
+          const name = document.createElement('div');
+          name.className = 'trainer-name';
+          name.textContent = `${t.name} ${t.surname}`;
+          
+          card.appendChild(avatar);
+          card.appendChild(name);
+          
+          if (t.trainer_type) {
+            const type = document.createElement('div');
+            type.style.fontSize = '12px';
+            type.style.color = '#666';
+            type.style.marginTop = '4px';
+            type.textContent = t.trainer_type;
+            card.appendChild(type);
+          }
+          
+          grid.appendChild(card);
+        });
+      }
+      
+      async function selectTrainer(trainerId, cardEl) {
+        selectedTrainer = trainerId;
+        selectedDate = null;
+        selectedTime = null;
+        selectedServiceId = (services && services.length > 0) ? services[0].id : null;
+        
+        // Update UI
+        document.querySelectorAll('.trainer-card').forEach(card => {
+          card.classList.remove('selected');
+        });
+        if (cardEl) cardEl.classList.add('selected');
+        
+        const calendarContainer = document.getElementById('calendarContainer');
+        calendarContainer.style.display = 'block';
+        const servicePanel = document.getElementById('servicePanel');
+        if (services && services.length > 0) {
+          servicePanel.style.display = 'block';
+          // Show all services (no trainer-specific filtering in this system)
+          const serviceSelect = document.getElementById('serviceSelect');
+          serviceSelect.innerHTML = '';
+          services.forEach(s => {
+            const opt = document.createElement('option');
+            opt.value = s.id;
+            opt.textContent = `${s.name} (${s.duration} min)`;
+            serviceSelect.appendChild(opt);
+          });
+          if (services.length > 0) {
+            selectedServiceId = services[0].id;
+          }
+        }
+        currentMonth = new Date();
+        await applyTrainerHours(trainerId, selectedDate || '');
+        renderCalendar();
+        
+        document.getElementById('timeSlots').style.display = 'none';
+        document.getElementById('bookFinal').style.display = 'none';
+      }
+
+      function renderCalendar() {
+        const grid = document.getElementById('calendarGrid');
+        const monthYear = document.getElementById('monthYear');
+        
+        const year = currentMonth.getFullYear();
+        const month = currentMonth.getMonth();
+        
+        monthYear.textContent = new Date(year, month).toLocaleDateString('hr-HR', { month: 'long', year: 'numeric' });
+        
+        grid.innerHTML = '';
+        
+        // Day labels
+        dayLabels.forEach(label => {
+          const div = document.createElement('div');
+          div.className = 'calendar-day day-label';
+          div.textContent = label;
+          grid.appendChild(div);
+        });
+        
+        const firstDay = new Date(year, month, 1).getDay();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        // Empty cells before month starts
+        for (let i = 0; i < firstDay; i++) {
+          const div = document.createElement('div');
+          div.className = 'calendar-day disabled';
+          grid.appendChild(div);
+        }
+        
+        // Days of month
+        for (let day = 1; day <= daysInMonth; day++) {
+          const date = new Date(year, month, day);
+          date.setHours(0, 0, 0, 0);
+          
+          const dateYear = date.getFullYear();
+          const dateMonth = String(date.getMonth() + 1).padStart(2, '0');
+          const dateDay = String(date.getDate()).padStart(2, '0');
+          const dateStr = `${dateYear}-${dateMonth}-${dateDay}`;
+          
+          const isPast = date < today;
+          
+          const div = document.createElement('div');
+          div.className = 'calendar-day';
+          div.textContent = day;
+          
+          if (isPast) {
+            div.classList.add('disabled');
+          } else {
+            if (date.getTime() === today.getTime()) {
+              div.classList.add('today');
+            }
+            if (selectedDate === dateStr) {
+              div.classList.add('selected');
+            }
+            div.onclick = () => selectDate(dateStr);
+          }
+          
+          grid.appendChild(div);
+        }
+      }
+
+      async function selectDate(dateStr) {
+        selectedDate = dateStr;
+        selectedTime = null;
+        await applyTrainerHours(selectedTrainer, dateStr);
+        renderCalendar();
+        updateTimeSlots();
+        updateBookButton();
+      }
+
+      function updateTimeSlots() {
+        const container = document.getElementById('timeSlots');
+        const grid = document.getElementById('timeGrid');
+        
+        if (!selectedTrainer || !selectedDate || !selectedServiceId) {
+          container.style.display = 'none';
+          return;
+        }
+        
+        container.style.display = 'block';
+        grid.innerHTML = '';
+        const selectedService = services.find(s => s.id === selectedServiceId);
+        const selDuration = selectedService?.duration || 60;
+
+        if (!allTimeSlots.length) {
+          grid.innerHTML = '<p style="color:#444;">Radno vrijeme nije postavljeno.</p>';
+          return;
+        }
+
+        function parseTimeToDate(dateStr, timeStr) {
+          return new Date(`${dateStr}T${timeStr}:00`);
+        }
+
+        function overlaps(start1, end1, start2, end2) {
+          return start1 < end2 && start2 < end1;
+        }
+
+        allTimeSlots.forEach(time => {
+          const btn = document.createElement('button');
+          btn.className = 'time-btn';
+          btn.textContent = time;
+          const slotStart = parseTimeToDate(selectedDate, time);
+          const slotEnd = new Date(slotStart.getTime() + selDuration * 60000);
+
+          let isTrainerBlocked = false;
+          allAppointments.forEach(a => {
+            if (a.trainer_id == selectedTrainer) {
+              const apptDate = new Date(a.scheduled_at);
+              const year = apptDate.getFullYear();
+              const month = String(apptDate.getMonth() + 1).padStart(2, '0');
+              const day = String(apptDate.getDate()).padStart(2, '0');
+              const apptDateStr = `${year}-${month}-${day}`;
+              if (apptDateStr === selectedDate) {
+                const apptStart = apptDate;
+                const apptEnd = new Date(apptStart.getTime() + (a.duration_minutes || 60) * 60000);
+                if (overlaps(slotStart, slotEnd, apptStart, apptEnd)) isTrainerBlocked = true;
+              }
+            }
+          });
+
+          let isUserBlocked = false;
+          allUserAppointments.forEach(a => {
+            const apptDate = new Date(a.scheduled_at);
+            const year = apptDate.getFullYear();
+            const month = String(apptDate.getMonth() + 1).padStart(2, '0');
+            const day = String(apptDate.getDate()).padStart(2, '0');
+            const apptDateStr = `${year}-${month}-${day}`;
+            if (apptDateStr === selectedDate) {
+              const apptStart = apptDate;
+              const apptEnd = new Date(apptStart.getTime() + (a.duration_minutes || 60) * 60000);
+              if (overlaps(slotStart, slotEnd, apptStart, apptEnd)) isUserBlocked = true;
+            }
+          });
+
+          btn.disabled = isTrainerBlocked || isUserBlocked;
+          if (isUserBlocked) {
+            btn.title = 'Već imate termin u ovom periodu';
+          } else if (isTrainerBlocked) {
+            btn.title = 'Trener je zauzet u ovom periodu';
+          } else {
+            btn.title = '';
+          }
+          
+          if (selectedTime === time) {
+            btn.classList.add('selected');
+          }
+          
+          if (!btn.disabled) {
+            btn.onclick = () => selectTime(time);
+          }
+          
+          grid.appendChild(btn);
+        });
+      }
+
+      function selectTime(time) {
+        selectedTime = time;
+        updateTimeSlots();
+        updateBookButton();
+      }
+
+      function updateBookButton() {
+        const btn = document.getElementById('bookBtn');
+        const container = document.getElementById('bookFinal');
+        
+        if (selectedTrainer && selectedDate && selectedTime && selectedServiceId) {
+          container.style.display = 'block';
+          
+          const selectedService = services.find(s => s.id === selectedServiceId);
+          const selDuration = selectedService?.duration || 60;
+          const slotStart = new Date(`${selectedDate}T${selectedTime}:00`);
+          const slotEnd = new Date(slotStart.getTime() + selDuration * 60000);
+          const hasConflict = allUserAppointments.some(a => {
+            const apptStart = new Date(a.scheduled_at);
+            const apptEnd = new Date(apptStart.getTime() + (a.duration_minutes || 60) * 60000);
+            return (apptStart < slotEnd && slotStart < apptEnd);
+          });
+          
+          if (hasConflict) {
+            btn.disabled = true;
+            btn.title = 'Već imate termin u ovom vremenu';
+            btn.style.opacity = '0.5';
+            btn.style.cursor = 'not-allowed';
+          } else {
+            btn.disabled = false;
+            btn.title = '';
+            btn.style.opacity = '1';
+            btn.style.cursor = 'pointer';
+          }
+        } else {
+          if (selectedTrainer && selectedDate && selectedServiceId) {
+            container.style.display = 'block';
+          } else {
+            container.style.display = 'none';
+          }
+          btn.disabled = true;
+          btn.title = '';
+          btn.style.opacity = '1';
+          btn.style.cursor = 'pointer';
+        }
+      }
+
+      function fmt(dt) {
+        const d = new Date(dt);
+        return d.toLocaleString('hr-HR');
+      }
+
+      async function loadAppointments() {
+        try {
+          console.log('Fetching appointments from /api/appointments...');
+          const data = await get('/api/appointments');
+          console.log('Fetched appointments count:', data ? data.length : 0);
+          console.log('Fetched appointments:', data);
+          allUserAppointments = data || [];
+          console.log('allUserAppointments is now:', allUserAppointments);
+          console.log('About to call renderFilteredUserAppointments...');
+          renderFilteredUserAppointments();
+          console.log('renderFilteredUserAppointments completed');
+        } catch (e) {
+          console.error('Error loading appointments:', e);
+          document.getElementById('apptList').textContent = 'Greška pri učitavanju: ' + e.message;
+        }
+      }
+
+      function renderFilteredUserAppointments() {
+        const wrap = document.getElementById('apptList');
+        console.log('renderFilteredUserAppointments: wrap element:', wrap);
+        
+        if (!wrap) {
+          console.error('apptList element not found!');
+          return;
+        }
+        
+        let list = [...allUserAppointments];
+        console.log('Starting with list of', list.length, 'appointments');
+        
+        // Filter only future appointments
+        const now = new Date();
+        console.log('Current date/time:', now);
+        list = list.filter(a => {
+          const apptTime = new Date(a.scheduled_at);
+          const isFuture = apptTime > now;
+          console.log(`  Appointment ${a.id}: ${a.scheduled_at} (${apptTime}) vs now (${now}) = ${isFuture ? 'FUTURE' : 'PAST'}`);
+          return isFuture;
+        });
+        
+        console.log('After filtering future: list.length =', list.length);
+        
+        // Apply service filter
+        if (userFilterService) {
+          list = list.filter(a => a.service_name === userFilterService);
+        }
+        
+        // Apply date filter
+        if (userFilterDate) {
+          list = list.filter(a => {
+            const apptDate = new Date(a.scheduled_at);
+            const filterDate = new Date(userFilterDate);
+            return apptDate.toDateString() === filterDate.toDateString();
+          });
+        }
+        
+        // Sort by time
+        list.sort((a, b) => {
+          const timeA = new Date(a.scheduled_at).getTime();
+          const timeB = new Date(b.scheduled_at).getTime();
+          return timeA - timeB;
+        });
+        
+        console.log('Final list.length after filters and sort:', list.length);
+        
+        if (!list || list.length === 0) { 
+          console.log('No appointments to display, showing message');
+          wrap.textContent = 'Još nema budućih termina.'; 
+          return; 
+        }
+        
+        console.log('Building HTML table for', list.length, 'appointments');
+        const rows = list.map(a => {
+          const scheduledAt = new Date(a.scheduled_at);
+          const now = new Date();
+          const hoursUntilAppt = (scheduledAt - now) / (1000 * 60 * 60);
+          const canCancel = hoursUntilAppt >= 24;
+          
+          const deleteButton = canCancel 
+            ? `<button class="del-btn" onclick="showDeleteConfirm(${a.id}, 'user')">Obriši</button>`
+            : `<button class="del-btn" disabled title="Ne možete otkazati termin manje od 24 sata prije početka" style="opacity: 0.5; cursor: not-allowed;">Obriši</button>`;
+          
+          return `
+          <tr>
+            <td>${fmt(a.scheduled_at)}</td>
+            <td>${a.service_name || 'N/A'}</td>
+            <td>${a.trainer_name} ${a.trainer_surname}</td>
+            <td class="action-cell">
+              <button class="confirm-btn" onclick="showEditModal(${a.id})">Uredi</button>
+              ${deleteButton}
+            </td>
+          </tr>
+        `;
+        }).join('');
+        
+        const html = `<table><thead><tr><th>Vrijeme</th><th>Usluga</th><th>Trener</th><th>Radnja</th></tr></thead><tbody>${rows}</tbody></table>`;
+        console.log('Setting innerHTML with table HTML');
+        wrap.innerHTML = html;
+        console.log('innerHTML set, table should be visible');
+      }
+
+      async function loadAdminAppointments() {
+        if (!isAdmin) return;
+        allAdminAppointments = await get('/api/admin/appointments');
+        renderFilteredAdminAppointments();
+      }
+      
+      function renderFilteredAdminAppointments() {
+        const wrap = document.getElementById('adminApptList');
+        let list = [...allAdminAppointments];
+        
+        // Apply trainer filter
+        if (adminFilterTrainer) {
+          list = list.filter(a => a.trainer_id == adminFilterTrainer);
+        }
+        
+        // Apply date filter
+        if (adminFilterDate) {
+          list = list.filter(a => {
+            const apptDate = new Date(a.scheduled_at);
+            const filterDate = new Date(adminFilterDate);
+            return apptDate.toDateString() === filterDate.toDateString();
+          });
+        }
+        
+        if (!list || list.length === 0) { 
+          wrap.textContent = 'Nema termina koji odgovaraju filtrima.'; 
+          return; 
+        }
+        
+        const rows = list.map(a => {
+          return `<tr>
+            <td>${fmt(a.scheduled_at)}</td>
+            <td>${a.user_name} ${a.user_surname} (${a.user_email})</td>
+            <td>${a.trainer_name} ${a.trainer_surname}</td>
+            <td><button class="del-btn" onclick="showDeleteConfirm(${a.id}, 'admin')">Obriši</button></td>
+          </tr>`;
+        }).join('');
+        wrap.innerHTML = `<table><thead><tr><th>Vrijeme</th><th>Korisnik</th><th>Trener</th><th>Radnja</th></tr></thead><tbody>${rows}</tbody></table>`;
+      }
+      
+      async function populateAdminTrainerFilter() {
+        const trainers = await get('/api/trainers');
+        const select = document.getElementById('adminTrainerFilter');
+        trainers.forEach(t => {
+          const opt = document.createElement('option');
+          opt.value = t.id;
+          opt.textContent = `${t.name} ${t.surname}`;
+          select.appendChild(opt);
+        });
+      }
+
+      async function populateTrainerWorkHoursSelect() {
+        const select = document.getElementById('trainerWorkHoursSelect');
+        if (!select) return;
+        select.innerHTML = '<option value="">Odaberite trenera...</option>';
+        const trainers = allTrainers.length ? allTrainers : await get('/api/trainers');
+        trainers.forEach(t => {
+          const opt = document.createElement('option');
+          opt.value = t.id;
+          opt.textContent = `${t.name} ${t.surname}`;
+          select.appendChild(opt);
+        });
+      }
+
+      async function refreshAdminReserveTimes() {
+        const timeSelect = document.getElementById('adminReserveTimeSelect');
+        if (!timeSelect) return;
+        const trainerId = document.getElementById('adminReserveTrainerSelect')?.value;
+        const serviceId = document.getElementById('adminReserveServiceSelect')?.value;
+        const dateVal = document.getElementById('adminReserveDate')?.value || '';
+        const selectedService = services.find(s => s.id === serviceId);
+        const duration = selectedService?.duration || 60;
+        const hours = await getEffectiveTrainerHours(trainerId, dateVal);
+        adminReserveHours = hours;
+        timeSelect.innerHTML = '<option value="">Odaberite vrijeme...</option>';
+        for (let h = hours.open_hour; h <= hours.close_hour; h++) {
+          const label = `${padHour(h)}:00`;
+          const opt = document.createElement('option');
+          opt.value = label;
+          opt.textContent = `${label} (${duration} min)`;
+          timeSelect.appendChild(opt);
+        }
+      }
+
+      function setTrainerWorkHourInputs(hours) {
+        const openInput = document.getElementById('trainerWorkOpen');
+        const closeInput = document.getElementById('trainerWorkClose');
+        if (openInput && hours) openInput.value = `${padHour(hours.open_hour)}:00`;
+        if (closeInput && hours) closeInput.value = `${padHour(hours.close_hour)}:00`;
+      }
+
+      async function fetchTrainerAdminHours(trainerId, dateVal = '') {
+        return get(`/api/admin/trainer/${trainerId}/work-hours${dateVal ? `?date=${encodeURIComponent(dateVal)}` : ''}`);
+      }
+
+      function renderTrainerHoursList(data) {
+        const container = document.getElementById('trainerWorkHoursList');
+        if (!container) return;
+        if (!data) {
+          container.innerHTML = '';
+          return;
+        }
+        const { base, overrides, effective } = data;
+        const parts = [];
+        if (effective) {
+          parts.push(`<div style="padding:8px; background:#e8f5e9; border-radius:6px; margin:8px 0;"><strong>Aktivno (${effective.source || 'n/a'}):</strong> ${padHour(effective.open_hour)}:00 - ${padHour(effective.close_hour)}:00</div>`);
+        }
+        if (base) {
+          parts.push(`<div style="padding:8px; background:#f0f4c3; border-radius:6px; margin:8px 0;"><strong>Osnovno:</strong> ${padHour(base.open_hour)}:00 - ${padHour(base.close_hour)}:00</div>`);
+        }
+        if (overrides && overrides.length) {
+          const rows = overrides.map(o => {
+            const dateRange = o.start_date === o.end_date ? o.start_date : `${o.start_date} → ${o.end_date}`;
+            return `<div style="padding:8px; background:#e3f2fd; border-left:4px solid #2d5f3f; margin:6px 0; border-radius:4px;">${dateRange}: <strong>${padHour(o.open_hour)}:00 - ${padHour(o.close_hour)}:00</strong></div>`;
+          }).join('');
+          parts.push(`<div style="margin:12px 0;"><strong>Iznimke:</strong>${rows}</div>`);
+        }
+        container.innerHTML = parts.join('');
+      }
+
+      async function loadTrainerWorkHoursForAdmin(trainerId) {
+        const status = document.getElementById('trainerWorkHoursStatus');
+        const dateVal = document.getElementById('trainerWorkStartDate')?.value || '';
+        if (!trainerId) {
+          setTrainerWorkHourInputs(defaultWorkHours);
+          renderTrainerHoursList(null);
+          if (status) status.textContent = 'Odaberite trenera za prikaz radnog vremena (prikazano globalno).';
+          return;
+        }
+        if (status) status.textContent = 'Učitavam...';
+        try {
+          const detail = await fetchTrainerAdminHours(trainerId, dateVal);
+          const hours = detail?.effective || detail?.base || null;
+          if (hours && hours.open_hour !== undefined) {
+            setTrainerWorkHourInputs(hours);
+            if (status) status.textContent = 'Prikazano radno vrijeme trenera.';
+          } else {
+            setTrainerWorkHourInputs(defaultWorkHours);
+            if (status) status.textContent = 'Nije postavljeno radno vrijeme; koristi se globalno.';
+          }
+          renderTrainerHoursList(detail);
+        } catch (e) {
+          if (status) status.textContent = e.message || 'Greška pri učitavanju.';
+        }
+      }
+
+      async function saveTrainerWorkHours() {
+        const trainerId = document.getElementById('trainerWorkHoursSelect')?.value;
+        const startDate = document.getElementById('trainerWorkStartDate')?.value;
+        const openVal = document.getElementById('trainerWorkOpen')?.value;
+        const closeVal = document.getElementById('trainerWorkClose')?.value;
+        const status = document.getElementById('trainerWorkHoursStatus');
+        if (status) status.textContent = '';
+        if (!trainerId) {
+          if (status) status.textContent = 'Odaberite trenera.';
+          return;
+        }
+        if (!openVal || !closeVal) {
+          if (status) status.textContent = 'Unesite početak i kraj.';
+          return;
+        }
+        const openHour = Number(openVal.split(':')[0]);
+        const closeHour = Number(closeVal.split(':')[0]);
+        try {
+          if (startDate) {
+            const endDate = startDate;
+            await put('/api/admin/trainer-work-hours-range', { trainerId, startDate, endDate, openHour, closeHour });
+            if (status) status.textContent = 'Spremljeno za odabrani datum.';
+          } else {
+            await put('/api/admin/trainer-work-hours', { trainerId, openHour, closeHour });
+            if (status) status.textContent = 'Spremljeno (osnovno radno vrijeme).';
+          }
+          // Refresh booking hours if this trainer is currently selected
+          if (selectedTrainer && Number(selectedTrainer) === Number(trainerId)) {
+            await applyTrainerHours(selectedTrainer, selectedDate || '');
+          }
+          await refreshAdminReserveTimes();
+        } catch (e) {
+          if (status) status.textContent = e.message || 'Greška pri spremanju.';
+        }
+      }
+
+      async function populateAdminReservationSelects() {
+        // Populate clients
+        try {
+          const clients = await get('/api/admin/clients');
+          const clientSelect = document.getElementById('adminClientSelect');
+          if (clientSelect) {
+            clients.forEach(c => {
+              const opt = document.createElement('option');
+              opt.value = c.id;
+              opt.textContent = `${c.name} ${c.surname} (${c.email})`;
+              clientSelect.appendChild(opt);
+            });
+          }
+        } catch (e) {
+          console.error('Error loading clients:', e);
+        }
+
+        // Populate trainers
+        try {
+          const trainers = await get('/api/trainers');
+          const trainerSelect = document.getElementById('adminReserveTrainerSelect');
+          if (trainerSelect) {
+            trainers.forEach(t => {
+              const opt = document.createElement('option');
+              opt.value = t.id;
+              opt.textContent = `${t.name} ${t.surname}`;
+              trainerSelect.appendChild(opt);
+            });
+          }
+        } catch (e) {
+          console.error('Error loading trainers:', e);
+        }
+
+        // Populate services
+        try {
+          const svcList = await get('/api/services');
+          services = svcList;
+          const serviceSelect = document.getElementById('adminReserveServiceSelect');
+          if (serviceSelect) {
+            serviceSelect.innerHTML = '';
+            svcList.forEach(s => {
+              const opt = document.createElement('option');
+              opt.value = s.id;
+              opt.textContent = s.name;
+              serviceSelect.appendChild(opt);
+            });
+          }
+        } catch (e) {
+          console.error('Error loading services:', e);
+        }
+      }
+
+      async function handleAdminReservation() {
+        const clientSelect = document.getElementById('adminClientSelect');
+        const trainerSelect = document.getElementById('adminReserveTrainerSelect');
+        const serviceSelect = document.getElementById('adminReserveServiceSelect');
+        const dateInput = document.getElementById('adminReserveDate');
+        const timeSelect = document.getElementById('adminReserveTimeSelect');
+        const statusDiv = document.getElementById('adminReserveStatus');
+
+        if (!clientSelect || !trainerSelect || !serviceSelect || !dateInput || !timeSelect || !statusDiv) {
+          console.error('One or more form elements not found');
+          return;
+        }
+
+        const userId = clientSelect.value;
+        const trainerId = trainerSelect.value;
+        const serviceId = serviceSelect.value;
+        const dateStr = dateInput.value;
+        const timeStr = timeSelect.value;
+
+        if (!userId || !trainerId || !dateStr || !timeStr) {
+          statusDiv.textContent = 'Molimo popunite sva obavezna polja';
+          statusDiv.style.color = 'red';
+          return;
+        }
+
+        const dt = new Date(`${dateStr}T${timeStr}:00`);
+        if (isNaN(dt.getTime())) {
+          statusDiv.textContent = 'Neispravan format datuma ili vremena.';
+          statusDiv.style.color = 'red';
+          return;
+        }
+        const scheduledAt = dt.toISOString();
+
+        try {
+          statusDiv.textContent = 'Dodavanje termina...';
+          statusDiv.style.color = 'blue';
+
+          const result = await post('/api/admin/appointments', {
+            userId: Number(userId),
+            trainerId: Number(trainerId),
+            scheduledAt,
+            serviceId: serviceId || null
+          });
+
+          statusDiv.textContent = 'Termin je uspješno dodan!';
+          statusDiv.style.color = 'green';
+
+          // Clear form
+          document.getElementById('adminClientSelect').value = '';
+          document.getElementById('adminReserveTrainerSelect').value = '';
+          document.getElementById('adminReserveServiceSelect').value = '';
+          document.getElementById('adminReserveDate').value = '';
+          document.getElementById('adminReserveTimeSelect').value = '';
+
+          // Refresh appointment lists
+          await loadAdminAppointments();
+          await loadUserAppointments();
+
+          // Auto-clear message after 3 seconds
+          setTimeout(() => {
+            statusDiv.textContent = '';
+          }, 3000);
+        } catch (e) {
+          statusDiv.textContent = `Greška: ${e.message || 'Nepoznata greška'}`;
+          statusDiv.style.color = 'red';
+        }
+      }
+
+      function showDeleteConfirm(id, type) {
+        console.log('showDeleteConfirm called with ID:', id, 'Type:', type);
+        pendingDeleteId = id;
+        pendingDeleteType = type;
+        showModal('Brisanje termina', 'Jeste li sigurni da želite obrisati ovaj termin?', 'error-modal', true, true);
+      }
+
+      async function showEditModal(id) {
+        const appt = allUserAppointments.find(a => a.id === id);
+        if (!appt) return;
+        pendingEditId = id;
+
+        const current = new Date(appt.scheduled_at);
+        const year = current.getFullYear();
+        const month = String(current.getMonth() + 1).padStart(2, '0');
+        const day = String(current.getDate()).padStart(2, '0');
+        const hours = String(current.getHours()).padStart(2, '0');
+        const mins = String(current.getMinutes()).padStart(2, '0');
+        const dateStr = `${year}-${month}-${day}`;
+        const timeStr = `${hours}:${mins}`;
+
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+        const modal = document.createElement('div');
+        modal.className = 'modal';
+        modal.innerHTML = `
+          <h3>Uredi termin</h3>
+          <p>Odaberite novi trener, uslugu, datum i vrijeme</p>
+          <label>Trener</label>
+          <select id="editTrainer"></select>
+          <label>Usluga</label>
+          <select id="editService"></select>
+          <label>Datum</label>
+          <input type="date" id="editDate" value="${dateStr}" />
+          <label style="margin-top:12px;">Vrijeme</label>
+          <select id="editTime"></select>
+          <div class="modal-buttons" style="margin-top:16px;">
+            <button class="modal-btn confirm" onclick="confirmEditFromModal()">Spremi</button>
+            <button class="modal-btn cancel" onclick="closeModal()">Odustani</button>
+          </div>
+        `;
+        overlay.appendChild(modal);
+        document.body.appendChild(overlay);
+
+        // Load trainers into dropdown, preselect current trainer
+        await loadEditTrainers(appt.trainer_id);
+
+        // Load services into dropdown
+        const editService = document.getElementById('editService');
+        editService.innerHTML = '';
+        services.forEach(s => {
+          const opt = document.createElement('option');
+          opt.value = s.id;
+          opt.textContent = `${s.name} (${s.duration} min)`;
+          // Preselect by name if available, else by matching duration
+          if (appt.service_name && s.name === appt.service_name) opt.selected = true;
+          editService.appendChild(opt);
+        });
+        if (!editService.value && services.length) {
+          // fallback select based on duration or first service
+          const matchByDuration = services.find(s => (appt.duration_minutes || 60) === s.duration);
+          editService.value = matchByDuration ? matchByDuration.id : services[0].id;
+        }
+
+        // Populate time options with availability considering selected trainer/service and user conflicts
+        const currentTrainerId = Number(document.getElementById('editTrainer').value);
+        await populateEditTimeOptions(currentTrainerId, dateStr, appt.id, timeStr, editService.value);
+
+        // Update times when date changes
+        document.getElementById('editDate').addEventListener('change', async (e) => {
+          const newDate = e.target.value;
+          const trainerId = Number(document.getElementById('editTrainer').value);
+          const svc = document.getElementById('editService').value;
+          await populateEditTimeOptions(trainerId, newDate, appt.id, null, svc);
+        });
+
+        // Update times when trainer changes
+        document.getElementById('editTrainer').addEventListener('change', async (e) => {
+          const trainerId = Number(e.target.value);
+          const newDate = document.getElementById('editDate').value || dateStr;
+          const svc = document.getElementById('editService').value;
+          await populateEditTimeOptions(trainerId, newDate, appt.id, null, svc);
+        });
+
+        // Update times when service changes
+        document.getElementById('editService').addEventListener('change', async (e) => {
+          const trainerId = Number(document.getElementById('editTrainer').value);
+          const newDate = document.getElementById('editDate').value || dateStr;
+          await populateEditTimeOptions(trainerId, newDate, appt.id, null, e.target.value);
+        });
+      }
+
+      async function loadEditTrainers(currentTrainerId) {
+        try {
+          const trainers = await get('/api/trainers');
+          cachedTrainers = trainers;
+          const select = document.getElementById('editTrainer');
+          if (!select) return;
+          select.innerHTML = '';
+          trainers.forEach(t => {
+            const opt = document.createElement('option');
+            opt.value = t.id;
+            opt.textContent = `${t.name} ${t.surname}`;
+            if (String(t.id) === String(currentTrainerId)) opt.selected = true;
+            select.appendChild(opt);
+          });
+        } catch (e) {
+          console.error('Error loading trainers for edit modal:', e);
+        }
+      }
+
+      async function populateEditTimeOptions(trainerId, dateStr, currentApptId, selectedTime, serviceId) {
+        const select = document.getElementById('editTime');
+        if (!select) return;
+        select.innerHTML = '';
+        const selectedService = services.find(s => s.id === serviceId);
+        const selDuration = selectedService?.duration || 60;
+
+        const hours = await getEffectiveTrainerHours(trainerId, dateStr);
+        const slotList = [];
+        for (let h = hours.open_hour; h <= hours.close_hour; h++) {
+          slotList.push(`${padHour(h)}:00`);
+        }
+        if (!slotList.length) {
+          const opt = document.createElement('option');
+          opt.textContent = 'Radno vrijeme nije postavljeno';
+          opt.disabled = true;
+          opt.selected = true;
+          select.appendChild(opt);
+          return;
+        }
+
+        function overlaps(start1, end1, start2, end2) {
+          return start1 < end2 && start2 < end1;
+        }
+
+        let firstEnabledSet = false;
+        slotList.forEach(t => {
+          const opt = document.createElement('option');
+          opt.value = t;
+          opt.textContent = t;
+          const slotStart = new Date(`${dateStr}T${t}:00`);
+          const slotEnd = new Date(slotStart.getTime() + selDuration * 60000);
+
+          let disabled = false;
+          allAppointments.forEach(a => {
+            if (a.id === currentApptId) return; // skip current appt
+            if (a.trainer_id == trainerId) {
+              const apptStart = new Date(a.scheduled_at);
+              const y = apptStart.getFullYear();
+              const m = String(apptStart.getMonth() + 1).padStart(2, '0');
+              const d = String(apptStart.getDate()).padStart(2, '0');
+              const ds = `${y}-${m}-${d}`;
+              if (ds === dateStr) {
+                const apptEnd = new Date(apptStart.getTime() + (a.duration_minutes || 60) * 60000);
+                if (overlaps(slotStart, slotEnd, apptStart, apptEnd)) disabled = true;
+              }
+            }
+          });
+
+          allUserAppointments.forEach(a => {
+            if (a.id === currentApptId) return; // skip current appt
+            const apptStart = new Date(a.scheduled_at);
+            const y = apptStart.getFullYear();
+            const m = String(apptStart.getMonth() + 1).padStart(2, '0');
+            const d = String(apptStart.getDate()).padStart(2, '0');
+            const ds = `${y}-${m}-${d}`;
+            if (ds === dateStr) {
+              const apptEnd = new Date(apptStart.getTime() + (a.duration_minutes || 60) * 60000);
+              if (overlaps(slotStart, slotEnd, apptStart, apptEnd)) disabled = true;
+            }
+          });
+
+          opt.disabled = disabled;
+          if (selectedTime === t && !disabled) {
+            opt.selected = true;
+            firstEnabledSet = true;
+          }
+          if (!selectedTime && !disabled && !firstEnabledSet) {
+            opt.selected = true;
+            firstEnabledSet = true;
+          }
+          select.appendChild(opt);
+        });
+      }
+
+      async function confirmEditFromModal() {
+        const id = pendingEditId;
+        const appt = allUserAppointments.find(a => a.id === id);
+        if (!appt) { closeModal(); return; }
+        const dateVal = document.getElementById('editDate')?.value;
+        const timeVal = document.getElementById('editTime')?.value;
+        const trainerVal = document.getElementById('editTrainer')?.value;
+        const serviceVal = document.getElementById('editService')?.value;
+        if (!dateVal || !timeVal) {
+          showModal('Pogreška', 'Molimo odaberite datum i vrijeme', 'error-modal');
+          return;
+        }
+        const iso = new Date(`${dateVal}T${timeVal}:00`).toISOString();
+        try {
+          closeModal();
+          const body = { scheduledAt: iso };
+          if (trainerVal) body.trainerId = Number(trainerVal);
+          if (serviceVal) body.serviceId = serviceVal;
+          await put(`/api/appointments/${id}`, body);
+          await loadAllAppointmentsForFiltering();
+          await loadAppointments();
+          updateTimeSlots();
+          showModal('Uspjeh', 'Termin je uspješno izmijenjen!', 'success-modal');
+          setTimeout(() => closeModal(), 2000);
+        } catch (e) {
+          showModal('Pogreška', e.message, 'error-modal');
+        }
+      }
+
+      // Trainer selection is now handled by trainer cards
+
+      document.getElementById('prevMonth').addEventListener('click', () => {
+        currentMonth.setMonth(currentMonth.getMonth() - 1);
+        renderCalendar();
+        selectedDate = null;
+        selectedTime = null;
+        updateTimeSlots();
+        updateBookButton();
+      });
+
+      document.getElementById('nextMonth').addEventListener('click', () => {
+        currentMonth.setMonth(currentMonth.getMonth() + 1);
+        renderCalendar();
+        selectedDate = null;
+        selectedTime = null;
+        updateTimeSlots();
+        updateBookButton();
+      });
+
+      document.getElementById('bookBtn').addEventListener('click', async () => {
+        const err = document.getElementById('bookErr');
+        const success = document.getElementById('bookSuccess');
+        err.textContent = '';
+        success.textContent = '';
+        
+        try {
+          if (!selectedTrainer || !selectedDate || !selectedTime || !selectedServiceId) {
+            throw new Error('Molimo odaberite trenera, uslugu, datum i vrijeme');
+          }
+          
+          const iso = new Date(`${selectedDate}T${selectedTime}:00`).toISOString();
+          await post('/api/appointments', { trainerId: selectedTrainer, scheduledAt: iso, serviceId: selectedServiceId });
+          await loadAllAppointmentsForFiltering();
+          await loadAppointments();
+          updateTimeSlots();
+          
+          success.textContent = 'Termin je uspješno rezerviran!';
+          
+          setTimeout(() => {
+            success.textContent = '';
+          }, 2000);
+        } catch (e) { 
+          err.textContent = e.message; 
+        }
+      });
+
+      document.getElementById('logoutBtn').addEventListener('click', async () => {
+        await post('/api/logout', {});
+        location.href = '/';
+      });
+      
+      // Service selector change
+      document.getElementById('serviceSelect')?.addEventListener('change', (e) => {
+        selectedServiceId = e.target.value;
+        updateTimeSlots();
+        updateBookButton();
+      });
+      
+      // Trainer filter event listeners
+      document.getElementById('filterService')?.addEventListener('change', async (e) => {
+        // Note: All trainers offer all services, so no filtering needed
+        filterServiceId = e.target.value || null;
+        renderFilteredTrainers();
+      });
+      
+      document.getElementById('filterTrainerType')?.addEventListener('change', async (e) => {
+        filterTrainerType = e.target.value || null;
+        await loadTrainers();
+      });
+      
+      // User filter event listeners
+      document.getElementById('userServiceFilter')?.addEventListener('change', (e) => {
+        userFilterService = e.target.value;
+        renderFilteredUserAppointments();
+      });
+      
+      document.getElementById('userDateFilter')?.addEventListener('change', (e) => {
+        userFilterDate = e.target.value;
+        renderFilteredUserAppointments();
+      });
+      
+      document.getElementById('clearUserFiltersBtn')?.addEventListener('click', () => {
+        userFilterService = '';
+        userFilterDate = '';
+        document.getElementById('userServiceFilter').value = '';
+        document.getElementById('userDateFilter').value = '';
+        renderFilteredUserAppointments();
+      });
+      
+      // Admin filter event listeners
+      document.getElementById('adminTrainerFilter')?.addEventListener('change', (e) => {
+        adminFilterTrainer = e.target.value;
+        renderFilteredAdminAppointments();
+      });
+      
+      document.getElementById('adminDateFilter')?.addEventListener('change', (e) => {
+        adminFilterDate = e.target.value;
+        renderFilteredAdminAppointments();
+      });
+      
+      document.getElementById('clearFiltersBtn')?.addEventListener('click', () => {
+        adminFilterTrainer = '';
+        adminFilterDate = '';
+        document.getElementById('adminTrainerFilter').value = '';
+        document.getElementById('adminDateFilter').value = '';
+        renderFilteredAdminAppointments();
+      });
+
+      document.getElementById('trainerWorkHoursSelect')?.addEventListener('change', async (e) => {
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+        const todayStr = `${yyyy}-${mm}-${dd}`;
+        const startInput = document.getElementById('trainerWorkStartDate');
+        if (startInput && !startInput.value) startInput.value = todayStr;
+        await loadTrainerWorkHoursForAdmin(e.target.value);
+      });
+
+      document.getElementById('saveTrainerWorkHoursBtn')?.addEventListener('click', async () => {
+        await saveTrainerWorkHours();
+      });
+
+      document.getElementById('trainerWorkStartDate')?.addEventListener('change', async (e) => {
+        const trainerId = document.getElementById('trainerWorkHoursSelect')?.value;
+        if (trainerId) {
+          await loadTrainerWorkHoursForAdmin(trainerId);
+        }
+      });
+
+      // Admin reservation
+      document.getElementById('adminReserveBtn')?.addEventListener('click', async () => {
+        await handleAdminReservation();
+      });
+
+      document.getElementById('adminReserveTrainerSelect')?.addEventListener('change', async () => {
+        await refreshAdminReserveTimes();
+      });
+
+      document.getElementById('adminReserveServiceSelect')?.addEventListener('change', async () => {
+        await refreshAdminReserveTimes();
+      });
+
+      document.getElementById('adminReserveDate')?.addEventListener('change', () => {
+        const dateInput = document.getElementById('adminReserveDate');
+        if (!dateInput) return;
+        // Prevent selecting past dates via manual entry
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+        const minStr = `${yyyy}-${mm}-${dd}`;
+        if (dateInput.value && dateInput.value < minStr) {
+          dateInput.value = minStr;
+        }
+        refreshAdminReserveTimes();
+      });
+
+      document.getElementById('saveWorkHoursBtn')?.addEventListener('click', async () => {
+        const openVal = document.getElementById('workOpen')?.value;
+        const closeVal = document.getElementById('workClose')?.value;
+        const status = document.getElementById('workHoursStatus');
+        if (status) status.textContent = '';
+        if (!openVal || !closeVal) {
+          if (status) status.textContent = 'Unesite početak i kraj radnog vremena.';
+          return;
+        }
+        const openHour = Number(openVal.split(':')[0]);
+        const closeHour = Number(closeVal.split(':')[0]);
+        try {
+          await put('/api/admin/work-hours', { openHour, closeHour });
+          await loadWorkHours();
+          updateTimeSlots();
+          if (status) status.textContent = 'Radno vrijeme je spremljeno.';
+        } catch (e) {
+          if (status) status.textContent = e.message || 'Greška pri spremanju.';
+        }
+      });
+
+      // init
+      (async () => {
+        try {
+          console.log('Loading user info...');
+          const me = await get('/api/me');
+          console.log('User info loaded:', me);
+          isAdmin = me.is_admin;
+          
+          if (isAdmin) {
+            console.log('Loading admin panel...');
+            const pageTitle = document.getElementById('pageTitle');
+            const bookingPanel = document.getElementById('bookingPanel');
+            const userApptPanel = document.getElementById('userApptPanel');
+            const adminPanel = document.getElementById('adminPanel');
+            const adminReservePanel = document.getElementById('adminReservePanel');
+            const workHoursCard = document.getElementById('workHoursCard');
+            const trainerWorkHoursCard = document.getElementById('trainerWorkHoursCard');
+            const statsPanel = document.getElementById('statsPanel');
+            const userTabs = document.getElementById('userTabs');
+            
+            if (pageTitle) pageTitle.textContent = 'Admin panel';
+            if (bookingPanel) bookingPanel.hidden = true;
+            if (userApptPanel) userApptPanel.hidden = true;
+            if (adminPanel) adminPanel.hidden = false;
+            if (adminReservePanel) adminReservePanel.hidden = false;
+            // keep global work hours card hidden for admins
+            if (workHoursCard) workHoursCard.hidden = true;
+            if (trainerWorkHoursCard) trainerWorkHoursCard.hidden = false;
+            if (statsPanel) statsPanel.hidden = false;
+            if (userTabs) userTabs.style.display = 'none';
+            
+            await loadWorkHours();
+            await populateAdminTrainerFilter();
+            await populateTrainerWorkHoursSelect();
+            await loadTrainerWorkHoursForAdmin('');
+            await populateAdminReservationSelects();
+            const adminDateInput = document.getElementById('adminReserveDate');
+            if (adminDateInput) {
+              const today = new Date();
+              const yyyy = today.getFullYear();
+              const mm = String(today.getMonth() + 1).padStart(2, '0');
+              const dd = String(today.getDate()).padStart(2, '0');
+              adminDateInput.value = `${yyyy}-${mm}-${dd}`;
+              adminDateInput.min = `${yyyy}-${mm}-${dd}`;
+            }
+            await refreshAdminReserveTimes();
+            await loadAdminAppointments();
+            await loadAdminStatistics();
+            console.log('Admin panel loaded');
+          } else {
+            console.log('Loading user panel...');
+            // Make sure user panels are visible
+            const bookingPanelUser = document.getElementById('bookingPanel');
+            const userApptPanelUser = document.getElementById('userApptPanel');
+            if (bookingPanelUser) bookingPanelUser.hidden = false;
+            if (userApptPanelUser) userApptPanelUser.hidden = false;
+            
+            document.getElementById('userTabs').style.display = 'flex';
+            await loadWorkHours();
+            services = await get('/api/services');
+            const serviceSelect = document.getElementById('serviceSelect');
+            serviceSelect.innerHTML = '';
+            services.forEach(s => {
+              const opt = document.createElement('option');
+              opt.value = s.id;
+              opt.textContent = `${s.name} (${s.duration} min)`;
+              serviceSelect.appendChild(opt);
+            });
+            
+            // Populate filter service dropdown if it exists
+            const filterService = document.getElementById('filterService');
+            if (filterService) {
+              filterService.innerHTML = '<option value="">Sve usluge</option>';
+              services.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s.id;
+                opt.textContent = s.name;
+                filterService.appendChild(opt);
+              });
+            }
+            
+            // Populate trainer type filter dropdown
+            const filterTrainerType = document.getElementById('filterTrainerType');
+            if (filterTrainerType) {
+              const trainerTypes = await get('/api/trainer-types');
+              filterTrainerType.innerHTML = '<option value="">Svi tipovi</option>';
+              trainerTypes.forEach(type => {
+                const opt = document.createElement('option');
+                opt.value = type;
+                opt.textContent = type;
+                filterTrainerType.appendChild(opt);
+              });
+            }
+            
+            // Populate user service filter dropdown
+            const userServiceFilter = document.getElementById('userServiceFilter');
+            if (userServiceFilter) {
+              userServiceFilter.innerHTML = '<option value="">Sve usluge</option>';
+              services.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s.name;
+                opt.textContent = s.name;
+                userServiceFilter.appendChild(opt);
+              });
+            }
+            
+            await loadAllAppointmentsForFiltering();
+            console.log('All appointments loaded');
+            await loadTrainers();
+            console.log('Trainers loaded');
+            await loadAppointments();
+            console.log('User appointments loaded');
+            updateTimeSlots();
+          }
+        } catch (e) {
+          console.error('Init error:', e);
+          alert('Error loading data: ' + (e.message || e));
+        }
+      })();
+    </script>
+    </div>
+  </body>
+</html>
